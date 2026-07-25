@@ -1,0 +1,40 @@
+spring:
+  application:
+    name: foodie
+  datasource:
+    url: ${DATABASE_URL:jdbc:h2:file:./data/foodie-db;DB_CLOSE_ON_EXIT=FALSE}
+    driver-class-name: ${DATABASE_DRIVER:org.h2.Driver}
+    username: ${DATABASE_USER:sa}
+    password: ${DATABASE_PASSWORD:}
+  h2:
+    console:
+      enabled: ${H2_CONSOLE_ENABLED:true}
+      path: /h2-console
+  jpa:
+    database-platform: ${JPA_DIALECT:org.hibernate.dialect.H2Dialect}
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    open-in-view: false
+    defer-datasource-initialization: true
+  sql:
+    init:
+      mode: never
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: ${GOOGLE_CLIENT_ID:444075693846-tqf09g35c5atbi17etfkr0nlmle3doaf.apps.googleusercontent.com}
+            client-secret: ${GOOGLE_CLIENT_SECRET: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}
+            scope: openid, profile, email
+
+server:
+  port: ${PORT:9090}
+  address: ${SERVER_ADDRESS:0.0.0.0}
+
+# Proxy config for external API calls (Open Food Facts)
+app:
+  proxy:
+    host: ${PROXY_HOST:}
+    port: ${PROXY_PORT:0}

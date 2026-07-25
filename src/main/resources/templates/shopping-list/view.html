@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Shopping List - Foodie')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: navbar}"></nav>
+
+<div class="container">
+    <!-- Flash messages -->
+    <div th:if="${success}" class="alert alert-success alert-dismissible fade show" role="alert">
+        <span th:text="${success}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
+    <!-- Week Navigation -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <a th:href="@{/shopping-list(week=${prevWeek})}" class="btn btn-outline-secondary">
+            <i class="bi bi-chevron-left"></i> Previous
+        </a>
+        <h3 class="mb-0">
+            <i class="bi bi-cart"></i>
+            Shopping List — Week of <span th:text="${#temporals.format(weekStart, 'd MMM yyyy')}"></span>
+        </h3>
+        <a th:href="@{/shopping-list(week=${nextWeek})}" class="btn btn-outline-secondary">
+            Next <i class="bi bi-chevron-right"></i>
+        </a>
+    </div>
+
+    <div class="row">
+        <!-- Main List -->
+        <div class="col-lg-8">
+            <div class="card mb-3">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <strong>Items</strong>
+                    <div class="d-flex gap-2">
+                        <button type="button" id="btn-share" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-share"></i> Share
+                        </button>
+                        <form th:action="@{/shopping-list/regenerate}" method="post" class="d-inline">
+                            <input type="hidden" name="weekStart" th:value="${weekStart}">
+                            <button type="submit" class="btn btn-sm btn-outline-warning"
+                                    onclick="return confirm('Regenerate from meal plan? This will add new items and remove orphans.')">
+                                <i class="bi bi-arrow-clockwise"></i> Sync with Plan
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-sm mb-0 align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width:40px"></th>
+                                <th>Product</th>
+                                <th>Calculated</th>
+                                <th>Quantity</th>
+                                <th>Unit</th>
+                                <th>Cost</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="item : ${items}"
+                                th:classappend="${item.checked} ? 'table-secondary text-decoration-line-through'">
+                                <td>
+                                    <form th:action="@{/shopping-list/toggle-checked}" method="post">
+                                        <input type="hidden" name="itemId" th:value="${item.id}">
+                                        <input type="hidden" name="weekStart" th:value="${weekStart}">
+                                        <button type="submit" class="btn btn-sm p-0 border-0">
+                                            <i th:class="${item.checked} ? 'bi bi-check-square text-success' : 'bi bi-square'"></i>
+                                        </button>
+                                    </form>
+                                </td>
+                                <td th:text="${item.product.name}"></td>
+                                <td class="text-muted small"
+                                    th:text="${#numbers.formatDecimal(item.calculatedQuantity, 1, 3)}"></td>
+                                <td style="width:120px">
+                                    <form th:action="@{/shopping-list/update-quantity}" method="post" class="d-flex gap-1">
+                                        <input type="hidden" name="itemId" th:value="${item.id}">
+                                        <input type="hidden" name="weekStart" th:value="${weekStart}">
+                                        <input type="number" name="quantity" class="form-control form-control-sm"
+                                               step="0.001" min="0"
+                                               th:value="${#numbers.formatDecimal(item.adjustedQuantity, 1, 3)}"
+                                               style="width:80px">
+                                        <button type="submit" class="btn btn-sm btn-outline-primary p-1">
+                                            <i class="bi bi-check"></i>
+                                        </button>
+                                    </form>
+                                </td>
+                                <td th:text="${item.product.unit.label}"></td>
+                                <td th:text="'EUR ' + ${#numbers.formatDecimal(item.cost, 1, 2)}"></td>
+                                <td>
+                                    <form th:action="@{/shopping-list/remove-item}" method="post" class="d-inline">
+                                        <input type="hidden" name="itemId" th:value="${item.id}">
+                                        <input type="hidden" name="weekStart" th:value="${weekStart}">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger p-1"
+                                                onclick="return confirm('Remove item?')">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                            <tr th:if="${#lists.isEmpty(items)}">
+                                <td colspan="7" class="text-center text-muted py-4">
+                                    No items. Add meals to your <a th:href="@{/meal-plan(week=${weekStart})}">meal plan</a> first.
+                                </td>
+                            </tr>
+                        </tbody>
+                        <tfoot th:if="${!#lists.isEmpty(items)}" class="table-light">
+                            <tr>
+                                <td colspan="5" class="text-end fw-bold">Total (unchecked):</td>
+                                <td class="fw-bold" th:text="'EUR ' + ${#numbers.formatDecimal(totalCost, 1, 2)}"></td>
+                                <td></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Add Item -->
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header"><strong>Add Item Manually</strong></div>
+                <div class="card-body">
+                    <form th:action="@{/shopping-list/add-item}" method="post">
+                        <input type="hidden" name="weekStart" th:value="${weekStart}">
+                        <div class="mb-2">
+                            <label class="form-label small">Product</label>
+                            <select name="productId" class="form-select form-select-sm" required>
+                                <option value="">-- Select --</option>
+                                <option th:each="p : ${products}" th:value="${p.id}"
+                                        th:text="${p.name + ' (' + p.unit.label + ')'}"></option>
+                            </select>
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label small">Quantity</label>
+                            <input type="number" name="quantity" class="form-control form-control-sm"
+                                   step="0.001" min="0.001" required>
+                        </div>
+                        <button type="submit" class="btn btn-success btn-sm w-100">
+                            <i class="bi bi-plus-lg"></i> Add
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+document.getElementById('btn-share').addEventListener('click', function() {
+    // Build text list from unchecked items
+    var rows = document.querySelectorAll('table tbody tr:not(.table-secondary)');
+    var lines = [];
+    rows.forEach(function(row) {
+        var cells = row.querySelectorAll('td');
+        if (cells.length >= 5) {
+            var name = cells[1].textContent.trim();
+            var qty = cells[3].querySelector('input[name="quantity"]');
+            var unit = cells[4].textContent.trim();
+            if (name && qty) {
+                lines.push(name + ' ' + qty.value + ' ' + unit);
+            }
+        }
+    });
+
+    if (lines.length === 0) {
+        alert('No items to share.');
+        return;
+    }
+
+    var text = lines.join('\n');
+
+    // Try Web Share API (works on mobile)
+    if (navigator.share) {
+        navigator.share({
+            title: 'Shopping List',
+            text: text
+        }).catch(function() {
+            // User cancelled or share failed — fall back to clipboard
+            copyToClipboard(text);
+        });
+    } else {
+        // Desktop fallback — copy to clipboard
+        copyToClipboard(text);
+    }
+});
+
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(function() {
+        alert('Shopping list copied to clipboard!\n\nPaste it into AnyList or any other app.');
+    }).catch(function() {
+        // Final fallback
+        prompt('Copy this list:', text);
+    });
+}
+</script>
+</body>
+</html>

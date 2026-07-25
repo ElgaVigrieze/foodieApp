@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Meals - Foodie')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: navbar}"></nav>
+
+<div class="container">
+    <!-- Flash messages -->
+    <div th:if="${success}" class="alert alert-success alert-dismissible fade show" role="alert">
+        <span th:text="${success}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2><i class="bi bi-cup-hot"></i> Meals</h2>
+        <a th:href="@{/meals/new}" class="btn btn-success">
+            <i class="bi bi-plus-lg"></i> Add Meal
+        </a>
+    </div>
+
+    <!-- Favorites Section -->
+    <div th:if="${!favorites.isEmpty()}">
+        <h5 class="mt-3 mb-2 text-warning">
+            <i class="bi bi-star-fill"></i> Favorites
+            <span class="badge bg-warning text-dark small" th:text="${favorites.size()}"></span>
+        </h5>
+        <div class="row">
+            <div th:each="meal : ${favorites}" class="col-md-6 col-lg-4 mb-3">
+                <div class="card h-100 border-warning">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <h5 class="card-title" th:text="${meal.name}"></h5>
+                            <span class="badge bg-info" th:text="${meal.category.label}"></span>
+                        </div>
+                        <p class="text-muted small mb-2">
+                            <span th:text="${meal.servings}"></span> servings |
+                            <span th:text="${meal.ingredients.size()}"></span> ingredients
+                        </p>
+                        <div class="row text-center small">
+                            <div class="col"><div class="fw-bold" th:text="${meal.caloriesPerServing}"></div><div class="text-muted">kcal</div></div>
+                            <div class="col"><div class="fw-bold" th:text="${meal.proteinPerServing}"></div><div class="text-muted">protein</div></div>
+                            <div class="col"><div class="fw-bold" th:text="${meal.carbsPerServing}"></div><div class="text-muted">carbs</div></div>
+                            <div class="col"><div class="fw-bold" th:text="${meal.fatPerServing}"></div><div class="text-muted">fat</div></div>
+                        </div>
+                        <hr>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="text-success fw-bold" th:text="'EUR ' + ${#numbers.formatDecimal(meal.costPerServing, 1, 2)} + ' / serving'"></span>
+                            <div>
+                                <form th:action="@{/meals/{id}/toggle-favorite(id=${meal.id})}" method="post" class="d-inline">
+                                    <button type="submit" class="btn btn-sm p-0 border-0"><i class="bi bi-star-fill text-warning"></i></button>
+                                </form>
+                                <a th:href="@{/meals/{id}(id=${meal.id})}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-eye"></i></a>
+                                <a th:href="@{/meals/{id}/copy(id=${meal.id})}" class="btn btn-sm btn-outline-info"><i class="bi bi-copy"></i></a>
+                                <a th:href="@{/meals/{id}/edit(id=${meal.id})}" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>
+                                <form th:action="@{/meals/{id}/delete(id=${meal.id})}" method="post" class="d-inline" onsubmit="return confirm('Delete this meal?')">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- By Category -->
+    <div th:each="entry : ${mealsByCategory}">
+        <h5 class="mt-4 mb-2 text-muted">
+            <span th:text="${entry.key.label}"></span>
+            <span class="badge bg-secondary small" th:text="${entry.value.size()}"></span>
+        </h5>
+        <div class="row">
+            <div th:each="meal : ${entry.value}" class="col-md-6 col-lg-4 mb-3">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <h5 class="card-title" th:text="${meal.name}"></h5>
+                            <span class="badge bg-info" th:text="${meal.category.label}"></span>
+                        </div>
+                        <p class="text-muted small mb-2">
+                            <span th:text="${meal.servings}"></span> servings |
+                            <span th:text="${meal.ingredients.size()}"></span> ingredients
+                        </p>
+                        <div class="row text-center small">
+                            <div class="col"><div class="fw-bold" th:text="${meal.caloriesPerServing}"></div><div class="text-muted">kcal</div></div>
+                            <div class="col"><div class="fw-bold" th:text="${meal.proteinPerServing}"></div><div class="text-muted">protein</div></div>
+                            <div class="col"><div class="fw-bold" th:text="${meal.carbsPerServing}"></div><div class="text-muted">carbs</div></div>
+                            <div class="col"><div class="fw-bold" th:text="${meal.fatPerServing}"></div><div class="text-muted">fat</div></div>
+                        </div>
+                        <hr>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="text-success fw-bold" th:text="'EUR ' + ${#numbers.formatDecimal(meal.costPerServing, 1, 2)} + ' / serving'"></span>
+                            <div>
+                                <form th:action="@{/meals/{id}/toggle-favorite(id=${meal.id})}" method="post" class="d-inline">
+                                    <button type="submit" class="btn btn-sm p-0 border-0"><i class="bi bi-star text-muted"></i></button>
+                                </form>
+                                <a th:href="@{/meals/{id}(id=${meal.id})}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-eye"></i></a>
+                                <a th:href="@{/meals/{id}/copy(id=${meal.id})}" class="btn btn-sm btn-outline-info"><i class="bi bi-copy"></i></a>
+                                <a th:href="@{/meals/{id}/edit(id=${meal.id})}" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>
+                                <form th:action="@{/meals/{id}/delete(id=${meal.id})}" method="post" class="d-inline" onsubmit="return confirm('Delete this meal?')">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div th:if="${favorites.isEmpty() && mealsByCategory.isEmpty()}" class="text-center text-muted py-5">
+        <i class="bi bi-cup-hot display-4"></i>
+        <p class="mt-2">No meals yet. <a th:href="@{/meals/new}">Create your first meal!</a></p>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Budget - Foodie')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: navbar}"></nav>
+
+<div class="container">
+    <h2 class="mb-4"><i class="bi bi-piggy-bank"></i> Food Budget</h2>
+
+    <div class="row">
+        <!-- Weekly Report -->
+        <div class="col-lg-6 mb-4">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <strong>Weekly Breakdown</strong>
+                    <form class="d-inline">
+                        <select name="week" class="form-select form-select-sm" style="width:auto;display:inline-block;"
+                                onchange="this.form.submit()">
+                            <option th:each="w : ${allWeeks}" th:value="${w}"
+                                    th:text="${#temporals.format(w, 'd MMM yyyy')}"
+                                    th:selected="${w.equals(selectedWeek)}"></option>
+                        </select>
+                    </form>
+                </div>
+                <div class="card-body">
+                    <div th:if="${weeklyReport.breakdown().isEmpty()}" class="text-center text-muted py-3">
+                        No meal plan for this week.
+                    </div>
+                    <div th:if="${!weeklyReport.breakdown().isEmpty()}">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h4 class="text-success mb-0" th:text="'EUR ' + ${#numbers.formatDecimal(weeklyReport.totalSpend(), 1, 2)}"></h4>
+                            <span class="text-muted">total for week</span>
+                        </div>
+
+                        <table class="table table-sm">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Category</th>
+                                    <th class="text-end">Amount</th>
+                                    <th class="text-end">%</th>
+                                    <th style="width:40%"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr th:each="item : ${weeklyReport.breakdown()}">
+                                    <td th:text="${item.categoryLabel()}"></td>
+                                    <td class="text-end" th:text="'EUR ' + ${#numbers.formatDecimal(item.amount(), 1, 2)}"></td>
+                                    <td class="text-end" th:text="${#numbers.formatDecimal(item.percentage(), 1, 1) + '%'}"></td>
+                                    <td>
+                                        <div class="progress" style="height:20px;">
+                                            <div class="progress-bar bg-success"
+                                                 th:style="'width:' + ${item.percentage()} + '%'"
+                                                 th:text="${#numbers.formatDecimal(item.percentage(), 1, 0) + '%'}">
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Overall Report -->
+        <div class="col-lg-6 mb-4">
+            <div class="card">
+                <div class="card-header"><strong>Overall (All Weeks)</strong></div>
+                <div class="card-body">
+                    <div th:if="${overallReport.breakdown().isEmpty()}" class="text-center text-muted py-3">
+                        No meal plans created yet.
+                    </div>
+                    <div th:if="${!overallReport.breakdown().isEmpty()}">
+                        <div class="row text-center mb-3">
+                            <div class="col">
+                                <div class="fs-4 fw-bold text-success" th:text="'EUR ' + ${#numbers.formatDecimal(overallReport.totalSpend(), 1, 2)}"></div>
+                                <small class="text-muted">Total spent</small>
+                            </div>
+                            <div class="col">
+                                <div class="fs-4 fw-bold text-primary" th:text="'EUR ' + ${#numbers.formatDecimal(overallReport.averagePerWeek(), 1, 2)}"></div>
+                                <small class="text-muted">Avg / week</small>
+                            </div>
+                            <div class="col">
+                                <div class="fs-4 fw-bold" th:text="${overallReport.weekCount()}"></div>
+                                <small class="text-muted">Weeks planned</small>
+                            </div>
+                        </div>
+
+                        <table class="table table-sm">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Category</th>
+                                    <th class="text-end">Total</th>
+                                    <th class="text-end">%</th>
+                                    <th style="width:40%"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr th:each="item : ${overallReport.breakdown()}">
+                                    <td th:text="${item.categoryLabel()}"></td>
+                                    <td class="text-end" th:text="'EUR ' + ${#numbers.formatDecimal(item.amount(), 1, 2)}"></td>
+                                    <td class="text-end" th:text="${#numbers.formatDecimal(item.percentage(), 1, 1) + '%'}"></td>
+                                    <td>
+                                        <div class="progress" style="height:20px;">
+                                            <div class="progress-bar bg-primary"
+                                                 th:style="'width:' + ${item.percentage()} + '%'"
+                                                 th:text="${#numbers.formatDecimal(item.percentage(), 1, 0) + '%'}">
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

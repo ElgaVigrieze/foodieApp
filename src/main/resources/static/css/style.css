@@ -1,0 +1,16 @@
+body {
+    background-color: #f8f9fa;
+}
+
+.card {
+    box-shadow: 0 2px 4px rgba(0,0,0,.08);
+}
+
+.table th {
+    white-space: nowrap;
+}
+
+.nutrition-badge {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+}

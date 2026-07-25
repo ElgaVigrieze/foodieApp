@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Food Log - Foodie')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: navbar}"></nav>
+
+<div class="container">
+    <!-- Flash messages -->
+    <div th:if="${success}" class="alert alert-success alert-dismissible fade show" role="alert">
+        <span th:text="${success}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
+    <!-- Date Navigation -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <a th:href="@{/log(date=${prevDate})}" class="btn btn-outline-secondary">
+            <i class="bi bi-chevron-left"></i> Previous
+        </a>
+        <h3 class="mb-0">
+            <i class="bi bi-journal-text"></i>
+            <span th:text="${#temporals.format(selectedDate, 'EEEE, d MMMM yyyy')}"></span>
+        </h3>
+        <a th:href="@{/log(date=${nextDate})}" class="btn btn-outline-secondary">
+            Next <i class="bi bi-chevron-right"></i>
+        </a>
+    </div>
+
+    <!-- Daily Totals -->
+    <div class="card mb-3">
+        <div class="card-body">
+            <div class="row text-center">
+                <div class="col">
+                    <div class="fs-3 fw-bold text-danger" th:text="${#numbers.formatDecimal(totals.calories(), 1, 0)}"></div>
+                    <small class="text-muted">Calories</small>
+                </div>
+                <div class="col">
+                    <div class="fs-3 fw-bold text-primary" th:text="${#numbers.formatDecimal(totals.protein(), 1, 1)}"></div>
+                    <small class="text-muted">Protein (g)</small>
+                </div>
+                <div class="col">
+                    <div class="fs-3 fw-bold text-warning" th:text="${#numbers.formatDecimal(totals.carbs(), 1, 1)}"></div>
+                    <small class="text-muted">Carbs (g)</small>
+                </div>
+                <div class="col">
+                    <div class="fs-3 fw-bold text-info" th:text="${#numbers.formatDecimal(totals.fat(), 1, 1)}"></div>
+                    <small class="text-muted">Fat (g)</small>
+                </div>
+                <div class="col">
+                    <div class="fs-3 fw-bold text-success" th:text="${#numbers.formatDecimal(totals.fiber(), 1, 1)}"></div>
+                    <small class="text-muted">Fiber (g)</small>
+                </div>
+                <div class="col">
+                    <div class="fs-3 fw-bold" th:text="${#numbers.formatDecimal(totals.netCarbs(), 1, 1)}"></div>
+                    <small class="text-muted">Net Carbs</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Log Entries -->
+        <div class="col-lg-7">
+            <div class="card">
+                <div class="card-header"><strong>Entries</strong></div>
+                <div class="table-responsive">
+                    <table class="table table-sm mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Meal</th>
+                                <th>Servings</th>
+                                <th>Cal</th>
+                                <th>P</th>
+                                <th>C</th>
+                                <th>F</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="entry : ${entries}">
+                                <td th:text="${entry.meal.name}"></td>
+                                <td th:text="${entry.servingsConsumed}"></td>
+                                <td th:text="${#numbers.formatDecimal(entry.calories, 1, 0)}"></td>
+                                <td th:text="${#numbers.formatDecimal(entry.protein, 1, 1)}"></td>
+                                <td th:text="${#numbers.formatDecimal(entry.carbs, 1, 1)}"></td>
+                                <td th:text="${#numbers.formatDecimal(entry.fat, 1, 1)}"></td>
+                                <td>
+                                    <form th:action="@{/log/{id}/delete(id=${entry.id})}" method="post" class="d-inline">
+                                        <input type="hidden" name="date" th:value="${selectedDate}">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger"
+                                                onclick="return confirm('Remove this entry?')">
+                                            <i class="bi bi-x"></i>
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                            <tr th:if="${#lists.isEmpty(entries)}">
+                                <td colspan="7" class="text-center text-muted py-3">No entries for this day.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Add Entry Form -->
+        <div class="col-lg-5">
+            <div class="card">
+                <div class="card-header"><strong>Add Entry</strong></div>
+                <div class="card-body">
+                    <form th:action="@{/log/add}" method="post">
+                        <input type="hidden" name="date" th:value="${selectedDate}">
+                        <div class="mb-3">
+                            <label for="mealId" class="form-label">Meal</label>
+                            <select name="mealId" class="form-select" id="mealId" required>
+                                <option value="">-- Select Meal --</option>
+                                <option th:each="m : ${meals}" th:value="${m.id}"
+                                        th:text="${m.name + ' (' + m.category.label + ')'}"></option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="servingsConsumed" class="form-label">Servings</label>
+                            <input type="number" name="servingsConsumed" class="form-control"
+                                   id="servingsConsumed" step="0.25" min="0.25" value="1" required>
+                        </div>
+                        <button type="submit" class="btn btn-success w-100">
+                            <i class="bi bi-plus-lg"></i> Add
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
