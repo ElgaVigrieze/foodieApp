@@ -2,6 +2,8 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <head th:replace="~{fragments/layout :: head('Food Log - Foodie')}"></head>
 <body>
+<meta name="_csrf" th:content="${_csrf.token}"/>
+<meta name="_csrf_header" th:content="${_csrf.headerName}"/>
 <nav th:replace="~{fragments/layout :: navbar}"></nav>
 
 <div class="container">
@@ -14,6 +16,7 @@
     <div class="d-flex justify-content-between align-items-center mb-3">
         <a th:href="@{/log(date=${prevDate})}" class="btn btn-outline-secondary"><i class="bi bi-chevron-left"></i></a>
         <h4 class="mb-0"><span th:text="${#temporals.format(selectedDate, 'EEE, d MMM')}"></span></h4>
+        <button id="voice-btn" class="btn btn-outline-primary btn-sm" title="Voice input"><i class="bi bi-mic"></i></button>
         <a th:href="@{/log(date=${nextDate})}" class="btn btn-outline-secondary"><i class="bi bi-chevron-right"></i></a>
     </div>
 
@@ -186,5 +189,91 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<div id="voice-modal" class="d-none position-fixed top-0 start-0 w-100 h-100" style="z-index:9999;background:rgba(0,0,0,0.7);">
+    <div class="d-flex align-items-center justify-content-center h-100">
+        <div class="card p-4 text-center" style="min-width:300px;">
+            <div id="voice-status" class="fs-5 mb-3">Listening...</div>
+            <div id="voice-text" class="text-muted mb-3"></div>
+            <div id="voice-result" class="d-none mb-3">
+                <div class="alert alert-success" id="voice-match"></div>
+                <button id="voice-confirm" class="btn btn-success">Confirm</button>
+            </div>
+            <button id="voice-cancel" class="btn btn-outline-secondary">Cancel</button>
+        </div>
+    </div>
+</div>
+<script>
+(function() {
+    var btn = document.getElementById('voice-btn');
+    var modal = document.getElementById('voice-modal');
+    var status = document.getElementById('voice-status');
+    var textEl = document.getElementById('voice-text');
+    var resultDiv = document.getElementById('voice-result');
+    var matchEl = document.getElementById('voice-match');
+    var confirmBtn = document.getElementById('voice-confirm');
+    var cancelBtn = document.getElementById('voice-cancel');
+    var parsedData = null;
+
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+        btn.style.display = 'none';
+        return;
+    }
+
+    var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    btn.addEventListener('click', function() {
+        modal.classList.remove('d-none');
+        resultDiv.classList.add('d-none');
+        status.textContent = 'Listening...';
+        textEl.textContent = '';
+
+        var recognition = new SpeechRecognition();
+        recognition.lang = 'en-US';
+        recognition.interimResults = false;
+        recognition.maxAlternatives = 1;
+
+        recognition.onresult = function(event) {
+            var text = event.results[0][0].transcript;
+            textEl.textContent = '"' + text + '"';
+            status.textContent = 'Processing...';
+
+            fetch('/api/voice/parse', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json', [document.querySelector('meta[name=_csrf_header]').content]: document.querySelector('meta[name=_csrf]').content},
+                body: JSON.stringify({text: text})
+            }).then(r => r.json()).then(function(data) {
+                if (data.parsed) {
+                    parsedData = data;
+                    var desc = data.type === 'meal'
+                        ? data.servings + ' srv of ' + data.mealName
+                        : data.quantity + ' ' + data.productName;
+                    if (data.slot) desc += ' (' + data.slot + ')';
+                    matchEl.textContent = desc;
+                    resultDiv.classList.remove('d-none');
+                    status.textContent = 'Match found!';
+                } else {
+                    status.textContent = data.error || 'Could not match. Try again.';
+                }
+            });
+        };
+
+        recognition.onerror = function() { status.textContent = 'Error. Try again.'; };
+        recognition.start();
+    });
+
+    confirmBtn.addEventListener('click', function() {
+        if (!parsedData) return;
+        var dateStr = document.querySelector('input[name="date"]').value;
+        parsedData.date = dateStr;
+        fetch('/api/voice/submit', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json', [document.querySelector('meta[name=_csrf_header]').content]: document.querySelector('meta[name=_csrf]').content},
+            body: JSON.stringify(parsedData)
+        }).then(function() { location.reload(); });
+    });
+
+    cancelBtn.addEventListener('click', function() { modal.classList.add('d-none'); });
+})();
+</script>
 </body>
 </html>
