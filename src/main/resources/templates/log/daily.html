@@ -64,7 +64,8 @@
                         <span class="text-danger" th:text="${#numbers.formatDecimal(slotTotals.get(slot).calories(), 1, 0)}"></span> kcal |
                         <span class="text-primary" th:text="${#numbers.formatDecimal(slotTotals.get(slot).protein(), 1, 0)}"></span>P |
                         <span class="text-warning" th:text="${#numbers.formatDecimal(slotTotals.get(slot).carbs(), 1, 0)}"></span>C |
-                        <span class="text-info" th:text="${#numbers.formatDecimal(slotTotals.get(slot).fat(), 1, 0)}"></span>F
+                        <span class="text-info" th:text="${#numbers.formatDecimal(slotTotals.get(slot).fat(), 1, 0)}"></span>F |
+                        <span class="text-success" th:text="${#numbers.formatDecimal(slotTotals.get(slot).fiber(), 1, 0)}"></span>Fb
                     </span>
                 </div>
                 <div class="table-responsive">
@@ -87,6 +88,7 @@
                                 <td class="small text-primary" th:text="${#numbers.formatDecimal(entry.protein, 1, 0)}"></td>
                                 <td class="small text-warning" th:text="${#numbers.formatDecimal(entry.carbs, 1, 0)}"></td>
                                 <td class="small text-info" th:text="${#numbers.formatDecimal(entry.fat, 1, 0)}"></td>
+                                <td class="small text-success" th:text="${#numbers.formatDecimal(entry.fiber, 1, 0)}"></td>
                                 <td>
                                     <form th:action="@{/log/{id}/delete(id=${entry.id})}" method="post" class="d-inline">
                                         <input type="hidden" name="date" th:value="${selectedDate}">
@@ -123,6 +125,7 @@
                                 <td class="small text-primary" th:text="${#numbers.formatDecimal(entry.protein, 1, 0)}"></td>
                                 <td class="small text-warning" th:text="${#numbers.formatDecimal(entry.carbs, 1, 0)}"></td>
                                 <td class="small text-info" th:text="${#numbers.formatDecimal(entry.fat, 1, 0)}"></td>
+                                <td class="small text-success" th:text="${#numbers.formatDecimal(entry.fiber, 1, 0)}"></td>
                                 <td>
                                     <form th:action="@{/log/{id}/delete(id=${entry.id})}" method="post" class="d-inline">
                                         <input type="hidden" name="date" th:value="${selectedDate}">
