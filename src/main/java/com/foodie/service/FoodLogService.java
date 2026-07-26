@@ -85,6 +85,13 @@ public class FoodLogService {
     }
 
     
+    
+    public void updateProductQuantity(Long id, BigDecimal quantity) {
+        FoodLog entry = foodLogRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Entry not found: " + id));
+        entry.setProductQuantity(quantity);
+        foodLogRepository.save(entry);
+    }
     public void updateServings(Long id, BigDecimal servings) {
         FoodLog entry = foodLogRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Entry not found: " + id));

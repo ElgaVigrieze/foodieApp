@@ -72,7 +72,11 @@
                                         <input type="hidden" name="date" th:value="${selectedDate}">
                                         <input type="number" name="servings" class="form-control form-control-sm d-inline" style="width:55px;" step="0.01" min="0.01" th:value="${entry.servingsConsumed}" onchange="this.form.submit()">
                                     </form>
-                                    <span th:if="${entry.product != null}" th:text="${entry.productQuantity + ' ' + entry.product.unit.label}"></span>
+                                    <form th:if="${entry.product != null}" th:action="@{/log/{id}/update-quantity(id=${entry.id})}" method="post" class="d-inline">
+                                        <input type="hidden" name="date" th:value="${selectedDate}">
+                                        <input type="number" name="quantity" class="form-control form-control-sm d-inline" style="width:55px;" step="0.01" min="0.01" th:value="${entry.productQuantity}" onchange="this.form.submit()">
+                                        <span class="small" th:text="${entry.product.unit.label}"></span>
+                                    </form>
                                 </td>
                                 <td class="small text-danger" th:text="${#numbers.formatDecimal(entry.calories, 1, 0)}"></td>
                                 <td class="small text-primary" th:text="${#numbers.formatDecimal(entry.protein, 1, 0)}"></td>
@@ -104,7 +108,11 @@
                                         <input type="hidden" name="date" th:value="${selectedDate}">
                                         <input type="number" name="servings" class="form-control form-control-sm d-inline" style="width:55px;" step="0.01" min="0.01" th:value="${entry.servingsConsumed}" onchange="this.form.submit()">
                                     </form>
-                                    <span th:if="${entry.product != null}" th:text="${entry.productQuantity + ' ' + entry.product.unit.label}"></span>
+                                    <form th:if="${entry.product != null}" th:action="@{/log/{id}/update-quantity(id=${entry.id})}" method="post" class="d-inline">
+                                        <input type="hidden" name="date" th:value="${selectedDate}">
+                                        <input type="number" name="quantity" class="form-control form-control-sm d-inline" style="width:55px;" step="0.01" min="0.01" th:value="${entry.productQuantity}" onchange="this.form.submit()">
+                                        <span class="small" th:text="${entry.product.unit.label}"></span>
+                                    </form>
                                 </td>
                                 <td class="small text-danger" th:text="${#numbers.formatDecimal(entry.calories, 1, 0)}"></td>
                                 <td class="small text-primary" th:text="${#numbers.formatDecimal(entry.protein, 1, 0)}"></td>

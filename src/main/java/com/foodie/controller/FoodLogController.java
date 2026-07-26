@@ -72,6 +72,15 @@ public class FoodLogController {
     }
 
     
+    
+    @PostMapping("/{id}/update-quantity")
+    public String updateQuantity(@PathVariable Long id,
+                                 @RequestParam BigDecimal quantity,
+                                 @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        foodLogService.updateProductQuantity(id, quantity);
+        return "redirect:/log?date=" + date;
+    }
+
     @PostMapping("/{id}/update-servings")
     public String updateServings(@PathVariable Long id,
                                  @RequestParam BigDecimal servings,
