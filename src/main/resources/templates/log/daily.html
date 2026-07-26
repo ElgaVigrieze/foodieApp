@@ -421,8 +421,8 @@
             <div id="barcode-input-area" class="mb-3">
                 <input type="text" id="barcode-text" class="form-control form-control-sm mb-2" placeholder="Enter barcode manually">
                 <button id="barcode-lookup-btn" class="btn btn-primary btn-sm w-100 mb-2">Lookup</button>
-                <div class="text-muted small">Or use camera:</div>
-                <input type="file" id="barcode-camera" accept="image/*" capture="environment" class="form-control form-control-sm">
+                <button id="barcode-scan-btn" class="btn btn-outline-warning btn-sm w-100"><i class="bi bi-upc-scan"></i> Open camera scanner</button>
+                <div id="barcode-scanner" class="d-none mt-2" style="position:relative;width:100%;max-width:320px;height:240px;margin:auto;overflow:hidden;"></div>
             </div>
             <div id="barcode-result" class="d-none mb-3 text-start">
                 <div class="alert alert-success small">
@@ -465,7 +465,7 @@
         </div>
     </div>
 </div>
-<script src="https://cdn.jsdelivr.net/npm/@AsmaDhia/quagga2@1.8.4/dist/quagga.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2@1.8.4/dist/quagga.min.js"></script>
 <script>
 (function() {
     var btn = document.getElementById('barcode-btn');
@@ -535,30 +535,56 @@
         if (e.key === 'Enter') { e.preventDefault(); lookupBtn.click(); }
     });
 
-    // Camera-based scanning: decode barcode from image
-    document.getElementById('barcode-camera').addEventListener('change', function() {
-        var file = this.files[0];
-        if (!file) return;
-        status.textContent = 'Decoding barcode...';
-        if (typeof Quagga !== 'undefined') {
-            Quagga.decodeSingle({
-                src: URL.createObjectURL(file),
-                numOfWorkers: 0,
-                decoder: { readers: ['ean_reader', 'ean_8_reader', 'upc_reader', 'code_128_reader'] }
-            }, function(result) {
-                if (result && result.codeResult) {
-                    barcodeText.value = result.codeResult.code;
-                    doLookup(result.codeResult.code);
-                } else {
-                    status.textContent = 'Could not decode barcode from image. Try entering manually.';
-                    inputArea.classList.remove('d-none');
-                }
-            });
-        } else {
-            status.textContent = 'Barcode library not loaded. Enter manually.';
-            inputArea.classList.remove('d-none');
+    // Live camera barcode scanner
+    var scannerDiv = document.getElementById('barcode-scanner');
+    var scanBtn = document.getElementById('barcode-scan-btn');
+    var scanning = false;
+
+    scanBtn.addEventListener('click', function() {
+        if (typeof Quagga === 'undefined') {
+            status.textContent = 'Scanner library not loaded.';
+            return;
         }
+        scannerDiv.classList.remove('d-none');
+        scanBtn.classList.add('d-none');
+        status.textContent = 'Point camera at barcode...';
+        scanning = true;
+
+        Quagga.init({
+            inputStream: {
+                type: 'LiveStream',
+                target: scannerDiv,
+                constraints: { facingMode: 'environment', width: 320, height: 240 }
+            },
+            decoder: { readers: ['ean_reader', 'ean_8_reader', 'upc_reader', 'upc_e_reader', 'code_128_reader'] }
+        }, function(err) {
+            if (err) {
+                status.textContent = 'Camera error: ' + err.message;
+                scannerDiv.classList.add('d-none');
+                scanBtn.classList.remove('d-none');
+                return;
+            }
+            Quagga.start();
+        });
+
+        Quagga.onDetected(function(result) {
+            if (!scanning) return;
+            scanning = false;
+            var code = result.codeResult.code;
+            Quagga.stop();
+            scannerDiv.classList.add('d-none');
+            barcodeText.value = code;
+            doLookup(code);
+        });
     });
+
+    function stopScanner() {
+        if (scanning) {
+            scanning = false;
+            try { Quagga.stop(); } catch(e) {}
+        }
+        scannerDiv.classList.add('d-none');
+    }
 
     // Log to food diary (as product)
     document.getElementById('barcode-log-btn').addEventListener('click', function() {
@@ -655,7 +681,7 @@
         });
     });
 
-    cancelBtn.addEventListener('click', function() { modal.classList.add('d-none'); });
+    cancelBtn.addEventListener('click', function() { stopScanner(); modal.classList.add('d-none'); });
 })();
 </script>
 </body>
