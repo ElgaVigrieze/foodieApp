@@ -34,15 +34,19 @@ public class MealPlan {
     @JoinColumn(name = "user_id")
     private AppUser owner;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "household_id")
+    private Household household;
+
     @OneToMany(mappedBy = "mealPlan", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     @Builder.Default
     private List<MealPlanEntry> entries = new ArrayList<>();
 
-    // ── Computed: Shopping List ─────────────────────────────────────────────
+    // â”€â”€ Computed: Shopping List â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     /**
      * Aggregates all ingredients across all meals in the plan.
-     * Returns a map of Product → total quantity needed.
+     * Returns a map of Product â†’ total quantity needed.
      */
     @Transient
     public Map<Product, BigDecimal> getShoppingList() {
@@ -63,7 +67,7 @@ public class MealPlan {
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
-    // ── Helper ─────────────────────────────────────────────────────────────
+    // â”€â”€ Helper â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     public void addEntry(MealPlanEntry entry) {
         entries.add(entry);
@@ -75,3 +79,4 @@ public class MealPlan {
         entry.setMealPlan(null);
     }
 }
+

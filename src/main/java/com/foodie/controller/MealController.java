@@ -3,6 +3,7 @@ package com.foodie.controller;
 import com.foodie.model.MealCategory;
 import com.foodie.service.MealService;
 import com.foodie.service.ProductService;
+import com.foodie.service.CurrentUserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -19,12 +20,14 @@ public class MealController {
 
     private final MealService mealService;
     private final ProductService productService;
+    private final CurrentUserService currentUserService;
 
     @GetMapping
     public String list(Model model) {
         model.addAttribute("favorites", mealService.findFavorites());
         model.addAttribute("mealsByCategory", mealService.findAllGroupedByCategory());
         model.addAttribute("categories", MealCategory.values());
+        model.addAttribute("isOwner", currentUserService.isOwner());
         return "meals/list";
     }
 
@@ -96,3 +99,4 @@ public class MealController {
         return "redirect:/meals";
     }
 }
+

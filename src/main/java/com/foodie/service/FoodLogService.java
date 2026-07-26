@@ -18,6 +18,7 @@ public class FoodLogService {
 
     private final FoodLogRepository foodLogRepository;
     private final MealRepository mealRepository;
+    private final com.foodie.repository.ProductRepository productRepository;
     private final CurrentUserService currentUserService;
 
     public List<FoodLog> findByDate(LocalDate date) {
@@ -28,25 +29,72 @@ public class FoodLogService {
         return foodLogRepository.findByDateOrderByIdAsc(date);
     }
 
-    public FoodLog addEntry(LocalDate date, Long mealId, BigDecimal servingsConsumed) {
+    public FoodLog addEntry(LocalDate date, Long mealId, BigDecimal servingsConsumed, com.foodie.model.MealSlot slot) {
         Meal meal = mealRepository.findById(mealId)
                 .orElseThrow(() -> new IllegalArgumentException("Meal not found: " + mealId));
         FoodLog entry = FoodLog.builder()
                 .date(date)
                 .meal(meal)
                 .servingsConsumed(servingsConsumed)
+                .slot(slot)
                 .owner(currentUserService.getCurrentUser())
+                .household(currentUserService.getCurrentHousehold())
                 .build();
         return foodLogRepository.save(entry);
     }
 
+    
+    public FoodLog addProductEntry(LocalDate date, Long productId, BigDecimal quantity, com.foodie.model.MealSlot slot) {
+        com.foodie.model.Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new IllegalArgumentException("Product not found: " + productId));
+        FoodLog entry = FoodLog.builder()
+                .date(date)
+                .product(product)
+                .productQuantity(quantity)
+                .servingsConsumed(java.math.BigDecimal.ONE)
+                .slot(slot)
+                .owner(currentUserService.getCurrentUser())
+                .household(currentUserService.getCurrentHousehold())
+                .build();
+        return foodLogRepository.save(entry);
+    }
+
+    public void updateCaloriesSpent(LocalDate date, BigDecimal caloriesSpent) {
+        // Store on the first entry of the day (or create a placeholder)
+        List<FoodLog> entries = findByDate(date);
+        if (!entries.isEmpty()) {
+            entries.getFirst().setCaloriesSpent(caloriesSpent);
+            foodLogRepository.save(entries.getFirst());
+        }
+    }
+
+    public BigDecimal getCaloriesSpent(LocalDate date) {
+        List<FoodLog> entries = findByDate(date);
+        return entries.stream()
+                .map(FoodLog::getCaloriesSpent)
+                .filter(java.util.Objects::nonNull)
+                .findFirst()
+                .orElse(null);
+    }
+
+    public BigDecimal getDailyCost(LocalDate date) {
+        List<FoodLog> entries = findByDate(date);
+        return entries.stream()
+                .map(e -> e.getCost())
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    
+    public void updateServings(Long id, BigDecimal servings) {
+        FoodLog entry = foodLogRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Entry not found: " + id));
+        entry.setServingsConsumed(servings);
+        foodLogRepository.save(entry);
+    }
     public void deleteEntry(Long id) {
         foodLogRepository.deleteById(id);
     }
 
-    /**
-     * Compute daily totals for a given date.
-     */
     public DailyTotals getDailyTotals(LocalDate date) {
         List<FoodLog> entries = findByDate(date);
         BigDecimal calories = BigDecimal.ZERO;
@@ -69,13 +117,29 @@ public class FoodLogService {
                 carbs.subtract(fiber));
     }
 
+    
+    public java.util.Map<com.foodie.model.MealSlot, DailyTotals> getSlotTotals(LocalDate date) {
+        List<FoodLog> entries = findByDate(date);
+        java.util.Map<com.foodie.model.MealSlot, DailyTotals> result = new java.util.LinkedHashMap<>();
+        for (com.foodie.model.MealSlot slot : com.foodie.model.MealSlot.values()) {
+            BigDecimal cal = BigDecimal.ZERO, pro = BigDecimal.ZERO, carb = BigDecimal.ZERO;
+            BigDecimal fat = BigDecimal.ZERO, fib = BigDecimal.ZERO, sug = BigDecimal.ZERO;
+            for (FoodLog e : entries) {
+                if (e.getSlot() == slot) {
+                    cal = cal.add(e.getCalories());
+                    pro = pro.add(e.getProtein());
+                    carb = carb.add(e.getCarbs());
+                    fat = fat.add(e.getFat());
+                    fib = fib.add(e.getFiber());
+                    sug = sug.add(e.getSugar());
+                }
+            }
+            result.put(slot, new DailyTotals(cal, pro, carb, fat, fib, sug, carb.subtract(fib)));
+        }
+        return result;
+    }
     public record DailyTotals(
-            BigDecimal calories,
-            BigDecimal protein,
-            BigDecimal carbs,
-            BigDecimal fat,
-            BigDecimal fiber,
-            BigDecimal sugar,
-            BigDecimal netCarbs
+            BigDecimal calories, BigDecimal protein, BigDecimal carbs,
+            BigDecimal fat, BigDecimal fiber, BigDecimal sugar, BigDecimal netCarbs
     ) {}
 }

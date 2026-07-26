@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Household - Foodie')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: navbar}"></nav>
+<div class="container">
+    <div th:if="${success}" class="alert alert-success" th:text="${success}"></div>
+    <div class="row justify-content-center mt-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header"><strong th:text="${household.name}"></strong></div>
+                <div class="card-body">
+                    <p>Share this code with family members:</p>
+                    <h3 class="text-center text-primary" th:text="${household.inviteCode}"></h3>
+                    <p class="text-muted text-center small">They can join by entering this code after logging in.</p>
+                    <hr>
+                    <p class="small text-muted">Your role: <strong th:text="${isOwner ? 'Owner' : 'Member'}"></strong></p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

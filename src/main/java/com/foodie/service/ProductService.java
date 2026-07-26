@@ -17,30 +17,27 @@ public class ProductService {
 
     private final ProductRepository productRepository;
     private final NutritionLookupService nutritionLookupService;
+    private final CurrentUserService currentUserService;
 
     public List<Product> findAll() {
+        Long hhId = currentUserService.getCurrentHouseholdId();
+        if (hhId != null) {
+            return productRepository.findByHouseholdIdOrHouseholdIdIsNullOrderByNameAsc(hhId);
+        }
         return productRepository.findAllByOrderByNameAsc();
     }
 
-    /**
-     * Returns products grouped by category, ordered by category enum order then name.
-     * Products without a category are grouped under null key.
-     */
     public Map<ProductCategory, List<Product>> findAllGroupedByCategory() {
-        List<Product> all = productRepository.findAllByOrderByNameAsc();
-        // Group by category, maintaining enum order
+        List<Product> all = findAll();
         Map<ProductCategory, List<Product>> grouped = all.stream()
                 .filter(p -> p.getCategory() != null)
                 .collect(Collectors.groupingBy(Product::getCategory, LinkedHashMap::new, Collectors.toList()));
-
-        // Add uncategorized at the end
         List<Product> uncategorized = all.stream()
                 .filter(p -> p.getCategory() == null)
                 .toList();
         if (!uncategorized.isEmpty()) {
             grouped.put(null, uncategorized);
         }
-
         return grouped;
     }
 
@@ -49,10 +46,10 @@ public class ProductService {
                 .orElseThrow(() -> new IllegalArgumentException("Product not found: " + id));
     }
 
-    /**
-     * Save a product. If nutrition fields are empty, auto-fill from Open Food Facts.
-     */
     public Product save(Product product) {
+        if (product.getHousehold() == null) {
+            product.setHousehold(currentUserService.getCurrentHousehold());
+        }
         nutritionLookupService.autoFillNutrition(product);
         return productRepository.save(product);
     }

@@ -22,15 +22,26 @@ public class MealService {
     private final CurrentUserService currentUserService;
 
     public List<Meal> findAll() {
-        AppUser user = currentUserService.getCurrentUser();
-        if (user != null) {
-            return mealRepository.findByOwnerIdOrOwnerIdIsNullOrderByNameAsc(user.getId());
+        Long hhId = currentUserService.getCurrentHouseholdId();
+        if (hhId != null) {
+            return mealRepository.findByHouseholdIdOrderByNameAsc(hhId);
         }
         return mealRepository.findAllByOrderByNameAsc();
     }
 
-    public List<Meal> findByCategory(MealCategory category) {
-        return mealRepository.findByCategoryOrderByNameAsc(category);
+    public List<Meal> findFavorites() {
+        Long hhId = currentUserService.getCurrentHouseholdId();
+        if (hhId != null) {
+            return mealRepository.findByHouseholdIdAndFavoriteTrueOrderByNameAsc(hhId);
+        }
+        return mealRepository.findByFavoriteTrueOrderByNameAsc();
+    }
+
+    public Map<MealCategory, List<Meal>> findAllGroupedByCategory() {
+        List<Meal> all = findAll();
+        return all.stream()
+                .filter(m -> !m.isFavorite())
+                .collect(Collectors.groupingBy(Meal::getCategory, LinkedHashMap::new, Collectors.toList()));
     }
 
     public Meal findById(Long id) {
@@ -52,6 +63,7 @@ public class MealService {
                 .servings(servings)
                 .recipe(recipe)
                 .owner(currentUserService.getCurrentUser())
+                .household(currentUserService.getCurrentHousehold())
                 .build();
 
         for (int i = 0; i < productIds.size(); i++) {
@@ -66,7 +78,6 @@ public class MealService {
                 meal.addIngredient(ingredient);
             }
         }
-
         return mealRepository.save(meal);
     }
 
@@ -78,8 +89,6 @@ public class MealService {
         meal.setCategory(category);
         meal.setServings(servings);
         meal.setRecipe(recipe);
-
-        // Clear existing ingredients and re-add
         meal.getIngredients().clear();
 
         for (int i = 0; i < productIds.size(); i++) {
@@ -94,7 +103,6 @@ public class MealService {
                 meal.addIngredient(ingredient);
             }
         }
-
         return mealRepository.save(meal);
     }
 
@@ -102,25 +110,14 @@ public class MealService {
         mealRepository.deleteById(id);
     }
 
-    public List<Meal> findFavorites() {
-        AppUser user = currentUserService.getCurrentUser();
-        if (user != null) {
-            return mealRepository.findByOwnerIdAndFavoriteTrueOrderByNameAsc(user.getId());
-        }
-        return mealRepository.findByFavoriteTrueOrderByNameAsc();
-    }
-
-    public Map<MealCategory, List<Meal>> findAllGroupedByCategory() {
-        List<Meal> all = findAll();
-        return all.stream()
-                .filter(m -> !m.isFavorite())
-                .collect(Collectors.groupingBy(Meal::getCategory, LinkedHashMap::new, Collectors.toList()));
-    }
-
     @Transactional
     public void toggleFavorite(Long id) {
         Meal meal = findById(id);
         meal.setFavorite(!meal.isFavorite());
         mealRepository.save(meal);
+    }
+
+    public List<Meal> findByCategory(MealCategory category) {
+        return mealRepository.findByCategoryOrderByNameAsc(category);
     }
 }

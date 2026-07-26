@@ -28,15 +28,16 @@ public class MealPlanService {
     @Transactional
     public MealPlan getOrCreateForWeek(LocalDate date) {
         LocalDate monday = date.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
-        AppUser user = currentUserService.getCurrentUser();
+        Long hhId = currentUserService.getCurrentHouseholdId();
 
-        if (user != null) {
-            return mealPlanRepository.findByWeekStartAndOwnerId(monday, user.getId())
+        if (hhId != null) {
+            return mealPlanRepository.findByWeekStartAndHouseholdId(monday, hhId)
                     .orElseGet(() -> mealPlanRepository.save(
                             MealPlan.builder()
                                     .name("Week of " + monday)
                                     .weekStart(monday)
-                                    .owner(user)
+                                    .owner(currentUserService.getCurrentUser())
+                                    .household(currentUserService.getCurrentHousehold())
                                     .build()
                     ));
         }
@@ -119,7 +120,7 @@ public class MealPlanService {
     }
 
     /**
-     * Build a shopping list from the meal plan — aggregates all ingredient quantities.
+     * Build a shopping list from the meal plan â€” aggregates all ingredient quantities.
      */
     public List<ShoppingItem> getShoppingList(MealPlan plan) {
         Map<Long, ShoppingItem> items = new LinkedHashMap<>();
@@ -188,3 +189,4 @@ public class MealPlanService {
         }
     }
 }
+

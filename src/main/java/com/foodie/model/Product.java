@@ -29,6 +29,10 @@ public class Product {
     @Enumerated(EnumType.STRING)
     private ProductCategory category;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "household_id")
+    private Household household;
+
     @NotNull
     @Enumerated(EnumType.STRING)
     private Unit unit;
@@ -38,7 +42,7 @@ public class Product {
     @PositiveOrZero
     private BigDecimal pricePerUnit;
 
-    // ── Nutrition (per 100g/100ml or per 1 piece) ──────────────────────────
+    // â”€â”€ Nutrition (per 100g/100ml or per 1 piece) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     @PositiveOrZero
     private BigDecimal calories;
@@ -65,3 +69,4 @@ public class Product {
         return carbs.subtract(fiber);
     }
 }
+

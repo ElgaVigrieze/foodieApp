@@ -5,7 +5,6 @@
 <nav th:replace="~{fragments/layout :: navbar}"></nav>
 
 <div class="container">
-    <!-- Flash messages -->
     <div th:if="${success}" class="alert alert-success alert-dismissible fade show" role="alert">
         <span th:text="${success}"></span>
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
@@ -13,88 +12,110 @@
 
     <!-- Date Navigation -->
     <div class="d-flex justify-content-between align-items-center mb-3">
-        <a th:href="@{/log(date=${prevDate})}" class="btn btn-outline-secondary">
-            <i class="bi bi-chevron-left"></i> Previous
-        </a>
-        <h3 class="mb-0">
-            <i class="bi bi-journal-text"></i>
-            <span th:text="${#temporals.format(selectedDate, 'EEEE, d MMMM yyyy')}"></span>
-        </h3>
-        <a th:href="@{/log(date=${nextDate})}" class="btn btn-outline-secondary">
-            Next <i class="bi bi-chevron-right"></i>
-        </a>
+        <a th:href="@{/log(date=${prevDate})}" class="btn btn-outline-secondary"><i class="bi bi-chevron-left"></i></a>
+        <h4 class="mb-0"><span th:text="${#temporals.format(selectedDate, 'EEE, d MMM')}"></span></h4>
+        <a th:href="@{/log(date=${nextDate})}" class="btn btn-outline-secondary"><i class="bi bi-chevron-right"></i></a>
     </div>
 
     <!-- Daily Totals -->
     <div class="card mb-3">
         <div class="card-body">
             <div class="row text-center">
+                <div class="col"><div class="fs-4 fw-bold text-danger" th:text="${caloriesSpent != null ? #numbers.formatDecimal(totals.calories().subtract(caloriesSpent), 1, 0) : #numbers.formatDecimal(totals.calories(), 1, 0)}"></div><small class="text-muted">Net kcal</small></div>
+                <div class="col"><div class="fs-4 fw-bold text-primary" th:text="${#numbers.formatDecimal(totals.protein(), 1, 1)}"></div><small class="text-muted">Protein</small></div>
+                <div class="col"><div class="fs-4 fw-bold text-warning" th:text="${#numbers.formatDecimal(totals.carbs(), 1, 1)}"></div><small class="text-muted">Carbs</small></div>
+                <div class="col"><div class="fs-4 fw-bold text-info" th:text="${#numbers.formatDecimal(totals.fat(), 1, 1)}"></div><small class="text-muted">Fat</small></div>
+                <div class="col"><div class="fs-4 fw-bold text-success" th:text="${#numbers.formatDecimal(totals.fiber(), 1, 1)}"></div><small class="text-muted">Fiber</small></div>
+            </div>
+            <hr>
+            <div class="row text-center">
                 <div class="col">
-                    <div class="fs-3 fw-bold text-danger" th:text="${#numbers.formatDecimal(totals.calories(), 1, 0)}"></div>
-                    <small class="text-muted">Calories</small>
+                    <form th:action="@{/log/update-calories-spent}" method="post" class="d-inline">
+                        <input type="hidden" name="date" th:value="${selectedDate}">
+                        <div class="input-group input-group-sm justify-content-center" style="max-width:180px;margin:auto;">
+                            <span class="input-group-text">Burned</span>
+                            <input type="number" name="caloriesSpent" class="form-control" style="width:70px;" th:value="${caloriesSpent}" placeholder="0" step="1" onchange="this.form.submit()">
+                        </div>
+                    </form>
                 </div>
                 <div class="col">
-                    <div class="fs-3 fw-bold text-primary" th:text="${#numbers.formatDecimal(totals.protein(), 1, 1)}"></div>
-                    <small class="text-muted">Protein (g)</small>
+                    <div class="fs-5 fw-bold" th:text="${#numbers.formatDecimal(totals.calories(), 1, 0)}"></div><small class="text-muted">Total kcal</small>
                 </div>
                 <div class="col">
-                    <div class="fs-3 fw-bold text-warning" th:text="${#numbers.formatDecimal(totals.carbs(), 1, 1)}"></div>
-                    <small class="text-muted">Carbs (g)</small>
-                </div>
-                <div class="col">
-                    <div class="fs-3 fw-bold text-info" th:text="${#numbers.formatDecimal(totals.fat(), 1, 1)}"></div>
-                    <small class="text-muted">Fat (g)</small>
-                </div>
-                <div class="col">
-                    <div class="fs-3 fw-bold text-success" th:text="${#numbers.formatDecimal(totals.fiber(), 1, 1)}"></div>
-                    <small class="text-muted">Fiber (g)</small>
-                </div>
-                <div class="col">
-                    <div class="fs-3 fw-bold" th:text="${#numbers.formatDecimal(totals.netCarbs(), 1, 1)}"></div>
-                    <small class="text-muted">Net Carbs</small>
+                    <div class="fs-5 fw-bold" th:text="'EUR ' + ${#numbers.formatDecimal(dailyCost, 1, 2)}"></div>
+                    <small class="text-muted">Day cost</small>
                 </div>
             </div>
         </div>
     </div>
 
     <div class="row">
-        <!-- Log Entries -->
+        <!-- Entries by Slot -->
         <div class="col-lg-7">
-            <div class="card">
-                <div class="card-header"><strong>Entries</strong></div>
+            <div th:each="slot : ${slots}" class="card mb-2">
+                <div class="card-header py-1 d-flex justify-content-between align-items-center">
+                    <strong class="small" th:text="${slot.label}"></strong>
+                    <span class="small text-muted">
+                        <span class="text-danger" th:text="${#numbers.formatDecimal(slotTotals.get(slot).calories(), 1, 0)}"></span> kcal |
+                        <span class="text-primary" th:text="${#numbers.formatDecimal(slotTotals.get(slot).protein(), 1, 0)}"></span>P |
+                        <span class="text-warning" th:text="${#numbers.formatDecimal(slotTotals.get(slot).carbs(), 1, 0)}"></span>C |
+                        <span class="text-info" th:text="${#numbers.formatDecimal(slotTotals.get(slot).fat(), 1, 0)}"></span>F
+                    </span>
+                </div>
                 <div class="table-responsive">
                     <table class="table table-sm mb-0">
-                        <thead class="table-light">
-                            <tr>
-                                <th>Meal</th>
-                                <th>Servings</th>
-                                <th>Cal</th>
-                                <th>P</th>
-                                <th>C</th>
-                                <th>F</th>
-                                <th></th>
-                            </tr>
-                        </thead>
                         <tbody>
-                            <tr th:each="entry : ${entries}">
-                                <td th:text="${entry.meal.name}"></td>
-                                <td th:text="${entry.servingsConsumed}"></td>
-                                <td th:text="${#numbers.formatDecimal(entry.calories, 1, 0)}"></td>
-                                <td th:text="${#numbers.formatDecimal(entry.protein, 1, 1)}"></td>
-                                <td th:text="${#numbers.formatDecimal(entry.carbs, 1, 1)}"></td>
-                                <td th:text="${#numbers.formatDecimal(entry.fat, 1, 1)}"></td>
+                            <tr th:each="entry : ${entries}" th:if="${entry.slot == slot}">
+                                <td th:text="${entry.displayName}"></td>
+                                <td class="small">
+                                    <form th:if="${entry.meal != null}" th:action="@{/log/{id}/update-servings(id=${entry.id})}" method="post" class="d-inline">
+                                        <input type="hidden" name="date" th:value="${selectedDate}">
+                                        <input type="number" name="servings" class="form-control form-control-sm d-inline" style="width:55px;" step="0.01" min="0.01" th:value="${entry.servingsConsumed}" onchange="this.form.submit()">
+                                    </form>
+                                    <span th:if="${entry.product != null}" th:text="${entry.productQuantity + ' ' + entry.product.unit.label}"></span>
+                                </td>
+                                <td class="small text-danger" th:text="${#numbers.formatDecimal(entry.calories, 1, 0)}"></td>
+                                <td class="small text-primary" th:text="${#numbers.formatDecimal(entry.protein, 1, 0)}"></td>
+                                <td class="small text-warning" th:text="${#numbers.formatDecimal(entry.carbs, 1, 0)}"></td>
+                                <td class="small text-info" th:text="${#numbers.formatDecimal(entry.fat, 1, 0)}"></td>
                                 <td>
                                     <form th:action="@{/log/{id}/delete(id=${entry.id})}" method="post" class="d-inline">
                                         <input type="hidden" name="date" th:value="${selectedDate}">
-                                        <button type="submit" class="btn btn-sm btn-outline-danger"
-                                                onclick="return confirm('Remove this entry?')">
-                                            <i class="bi bi-x"></i>
-                                        </button>
+                                        <button type="submit" class="btn btn-sm btn-outline-danger p-0 border-0"><i class="bi bi-x"></i></button>
                                     </form>
                                 </td>
                             </tr>
-                            <tr th:if="${#lists.isEmpty(entries)}">
-                                <td colspan="7" class="text-center text-muted py-3">No entries for this day.</td>
+                            
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Unslotted entries -->
+            <div class="card mb-2" th:if="${entries.?[slot == null].size() > 0}">
+                <div class="card-header py-1"><strong class="small text-muted">Other</strong></div>
+                <div class="table-responsive">
+                    <table class="table table-sm mb-0">
+                        <tbody>
+                            <tr th:each="entry : ${entries}" th:if="${entry.slot == null}">
+                                <td th:text="${entry.displayName}"></td>
+                                <td class="small">
+                                    <form th:if="${entry.meal != null}" th:action="@{/log/{id}/update-servings(id=${entry.id})}" method="post" class="d-inline">
+                                        <input type="hidden" name="date" th:value="${selectedDate}">
+                                        <input type="number" name="servings" class="form-control form-control-sm d-inline" style="width:55px;" step="0.01" min="0.01" th:value="${entry.servingsConsumed}" onchange="this.form.submit()">
+                                    </form>
+                                    <span th:if="${entry.product != null}" th:text="${entry.productQuantity + ' ' + entry.product.unit.label}"></span>
+                                </td>
+                                <td class="small text-danger" th:text="${#numbers.formatDecimal(entry.calories, 1, 0)}"></td>
+                                <td class="small text-primary" th:text="${#numbers.formatDecimal(entry.protein, 1, 0)}"></td>
+                                <td class="small text-warning" th:text="${#numbers.formatDecimal(entry.carbs, 1, 0)}"></td>
+                                <td class="small text-info" th:text="${#numbers.formatDecimal(entry.fat, 1, 0)}"></td>
+                                <td>
+                                    <form th:action="@{/log/{id}/delete(id=${entry.id})}" method="post" class="d-inline">
+                                        <input type="hidden" name="date" th:value="${selectedDate}">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger p-0 border-0"><i class="bi bi-x"></i></button>
+                                    </form>
+                                </td>
                             </tr>
                         </tbody>
                     </table>
@@ -102,29 +123,53 @@
             </div>
         </div>
 
-        <!-- Add Entry Form -->
+        <!-- Add Entry Forms -->
         <div class="col-lg-5">
-            <div class="card">
-                <div class="card-header"><strong>Add Entry</strong></div>
+            <div class="card mb-3">
+                <div class="card-header"><strong>Log Meal</strong></div>
                 <div class="card-body">
                     <form th:action="@{/log/add}" method="post">
                         <input type="hidden" name="date" th:value="${selectedDate}">
-                        <div class="mb-3">
-                            <label for="mealId" class="form-label">Meal</label>
-                            <select name="mealId" class="form-select" id="mealId" required>
+                        <div class="mb-2">
+                            <select name="mealId" class="form-select form-select-sm" required>
                                 <option value="">-- Select Meal --</option>
-                                <option th:each="m : ${meals}" th:value="${m.id}"
-                                        th:text="${m.name + ' (' + m.category.label + ')'}"></option>
+                                <option th:each="m : ${meals}" th:value="${m.id}" th:text="${m.name + (m.getServingSize().isEmpty() ? '' : ' ' + m.getServingSize() + '/srv')}"></option>
                             </select>
                         </div>
-                        <div class="mb-3">
-                            <label for="servingsConsumed" class="form-label">Servings</label>
-                            <input type="number" name="servingsConsumed" class="form-control"
-                                   id="servingsConsumed" step="0.25" min="0.25" value="1" required>
+                        <div class="mb-2">
+                            <select name="slot" class="form-select form-select-sm">
+                                <option value="">-- Slot --</option>
+                                <option th:each="s : ${slots}" th:value="${s}" th:text="${s.label}"></option>
+                            </select>
                         </div>
-                        <button type="submit" class="btn btn-success w-100">
-                            <i class="bi bi-plus-lg"></i> Add
-                        </button>
+                        <div class="d-flex gap-2">
+                            <input type="number" name="servingsConsumed" class="form-control form-control-sm" step="0.01" min="0.01" value="1" style="width:80px;" required>
+                            <button type="submit" class="btn btn-success btn-sm flex-grow-1">Add</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            <div class="card mb-3">
+                <div class="card-header"><strong>Log Product</strong></div>
+                <div class="card-body">
+                    <form th:action="@{/log/add-product}" method="post">
+                        <input type="hidden" name="date" th:value="${selectedDate}">
+                        <div class="mb-2">
+                            <select name="productId" class="form-select form-select-sm" required>
+                                <option value="">-- Select Product --</option>
+                                <option th:each="p : ${products}" th:value="${p.id}" th:text="${p.name + ' (' + p.unit.label + ')'}"></option>
+                            </select>
+                        </div>
+                        <div class="mb-2">
+                            <select name="slot" class="form-select form-select-sm">
+                                <option value="">-- Slot --</option>
+                                <option th:each="s : ${slots}" th:value="${s}" th:text="${s.label}"></option>
+                            </select>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <input type="number" name="quantity" class="form-control form-control-sm" step="0.01" min="0.01" placeholder="Qty" style="width:80px;" required>
+                            <button type="submit" class="btn btn-success btn-sm flex-grow-1">Add</button>
+                        </div>
                     </form>
                 </div>
             </div>

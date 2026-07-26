@@ -27,12 +27,24 @@ public class SequenceFixService {
         try (Connection conn = dataSource.getConnection();
              Statement stmt = conn.createStatement()) {
 
+            // Fix household_role column type and default
+            try { stmt.executeUpdate("ALTER TABLE app_users ALTER COLUMN household_role VARCHAR(50) DEFAULT 'MEMBER'"); } catch (Exception ignored) {}
+            // Fix household_role for existing users (must run before anything else)
+            try { stmt.executeUpdate("ALTER TABLE app_users ADD COLUMN IF NOT EXISTS household_role VARCHAR(50) DEFAULT 'MEMBER'"); } catch (Exception ignored) {}
+            try { stmt.executeUpdate("UPDATE app_users SET household_role = 'MEMBER' WHERE household_role IS NULL"); } catch (Exception ignored) {}
+
             fixSequence(stmt, "products");
             fixSequence(stmt, "meals");
             fixSequence(stmt, "meal_ingredients");
             fixSequence(stmt, "meal_plan_entries");
             fixSequence(stmt, "meal_plans");
             fixSequence(stmt, "food_logs");
+
+            // Make meal_id nullable (needed for product-only food log entries)
+            try { stmt.executeUpdate("ALTER TABLE food_logs ALTER COLUMN meal_id SET NULL"); } catch (Exception ignored) {}
+            try { stmt.executeUpdate("ALTER TABLE food_logs ALTER COLUMN meal_id DROP NOT NULL"); } catch (Exception ignored) {}
+            try { stmt.executeUpdate("ALTER TABLE app_users ALTER COLUMN household_role SET DEFAULT 'MEMBER'"); } catch (Exception ignored) {}
+            try { stmt.executeUpdate("UPDATE app_users SET household_role = 'MEMBER' WHERE household_role IS NULL"); } catch (Exception ignored) {}
             fixSequence(stmt, "shopping_list_items");
 
             log.info("Auto-increment sequences fixed successfully.");

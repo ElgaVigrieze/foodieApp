@@ -23,7 +23,7 @@ public class SecurityConfig {
                 )
                 .oauth2Login(oauth -> oauth
                         .loginPage("/login")
-                        .userInfoEndpoint(info -> info.userService(customOAuth2UserService))
+                        .userInfoEndpoint(info -> info.oidcUserService(customOAuth2UserService))
                         .defaultSuccessUrl("/meals", true)
                 )
                 .logout(logout -> logout
