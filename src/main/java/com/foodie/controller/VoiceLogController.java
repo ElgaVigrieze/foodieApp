@@ -147,7 +147,8 @@ public class VoiceLogController {
         }
         return best;
     }
-        private Product findBestProductMatch(List<Product> products, String text) {
+
+    private Product findBestProductMatch(List<Product> products, String text) {
         String cleaned = text.replaceAll("\\d+\\.?\\d*\\s*(kg|g|grams?|liters?|l|pieces?|pc|servings?|srv)?", "")
                 .replaceAll("(breakfast|lunch|dinner|snack|morning|evening|midday|for|of)", "")
                 .trim();
