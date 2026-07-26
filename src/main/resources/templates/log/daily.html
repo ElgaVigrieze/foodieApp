@@ -422,7 +422,7 @@
                 <input type="text" id="barcode-text" class="form-control form-control-sm mb-2" placeholder="Enter barcode manually">
                 <button id="barcode-lookup-btn" class="btn btn-primary btn-sm w-100 mb-2">Lookup</button>
                 <button id="barcode-scan-btn" class="btn btn-outline-warning btn-sm w-100"><i class="bi bi-upc-scan"></i> Open camera scanner</button>
-                <div id="barcode-scanner" class="d-none mt-2" style="position:relative;width:100%;max-width:320px;height:240px;margin:auto;overflow:hidden;"></div>
+                <div id="barcode-scanner" class="d-none mt-2" style="width:100%;max-width:320px;margin:auto;"></div>
             </div>
             <div id="barcode-result" class="d-none mb-3 text-start">
                 <div class="alert alert-success small">
@@ -465,7 +465,7 @@
         </div>
     </div>
 </div>
-<script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2@1.8.4/dist/quagga.min.js"></script>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script>
 (function() {
     var btn = document.getElementById('barcode-btn');
@@ -480,6 +480,7 @@
     var csrfToken = document.querySelector('meta[name=_csrf]').content;
     var csrfHeader = document.querySelector('meta[name=_csrf_header]').content;
     var currentData = null;
+    var html5Scanner = null;
 
     btn.addEventListener('click', function() {
         modal.classList.remove('d-none');
@@ -489,6 +490,8 @@
         status.textContent = 'Scan a barcode';
         barcodeText.value = '';
         currentData = null;
+        document.getElementById('barcode-scan-btn').classList.remove('d-none');
+        document.getElementById('barcode-scanner').classList.add('d-none');
     });
 
     function doLookup(barcode) {
@@ -535,53 +538,42 @@
         if (e.key === 'Enter') { e.preventDefault(); lookupBtn.click(); }
     });
 
-    // Live camera barcode scanner
+    // Live camera barcode scanner using html5-qrcode
     var scannerDiv = document.getElementById('barcode-scanner');
     var scanBtn = document.getElementById('barcode-scan-btn');
-    var scanning = false;
 
     scanBtn.addEventListener('click', function() {
-        if (typeof Quagga === 'undefined') {
+        if (typeof Html5Qrcode === 'undefined') {
             status.textContent = 'Scanner library not loaded.';
             return;
         }
         scannerDiv.classList.remove('d-none');
         scanBtn.classList.add('d-none');
         status.textContent = 'Point camera at barcode...';
-        scanning = true;
 
-        Quagga.init({
-            inputStream: {
-                type: 'LiveStream',
-                target: scannerDiv,
-                constraints: { facingMode: 'environment', width: 320, height: 240 }
+        html5Scanner = new Html5Qrcode('barcode-scanner');
+        html5Scanner.start(
+            { facingMode: 'environment' },
+            { fps: 10, qrbox: { width: 250, height: 100 } },
+            function onSuccess(decodedText) {
+                barcodeText.value = decodedText;
+                stopScanner();
+                doLookup(decodedText);
             },
-            decoder: { readers: ['ean_reader', 'ean_8_reader', 'upc_reader', 'upc_e_reader', 'code_128_reader'] }
-        }, function(err) {
-            if (err) {
-                status.textContent = 'Camera error: ' + err.message;
-                scannerDiv.classList.add('d-none');
-                scanBtn.classList.remove('d-none');
-                return;
-            }
-            Quagga.start();
-        });
-
-        Quagga.onDetected(function(result) {
-            if (!scanning) return;
-            scanning = false;
-            var code = result.codeResult.code;
-            Quagga.stop();
+            function onError() { /* ignore scan failures */ }
+        ).catch(function(err) {
+            status.textContent = 'Camera error: ' + err;
             scannerDiv.classList.add('d-none');
-            barcodeText.value = code;
-            doLookup(code);
+            scanBtn.classList.remove('d-none');
         });
     });
 
     function stopScanner() {
-        if (scanning) {
-            scanning = false;
-            try { Quagga.stop(); } catch(e) {}
+        if (html5Scanner) {
+            html5Scanner.stop().then(function() {
+                html5Scanner.clear();
+            }).catch(function() {});
+            html5Scanner = null;
         }
         scannerDiv.classList.add('d-none');
     }
