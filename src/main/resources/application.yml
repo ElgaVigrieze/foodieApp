@@ -33,6 +33,10 @@ server:
   port: ${PORT:9090}
   address: ${SERVER_ADDRESS:0.0.0.0}
 
+spring.servlet.multipart:
+  max-file-size: 20MB
+  max-request-size: 20MB
+
 # Proxy config for external API calls (Open Food Facts)
 app:
   cloudflare:

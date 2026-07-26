@@ -17,6 +17,7 @@
         <a th:href="@{/log(date=${prevDate})}" class="btn btn-outline-secondary"><i class="bi bi-chevron-left"></i></a>
         <h4 class="mb-0"><span th:text="${#temporals.format(selectedDate, 'EEE, d MMM')}"></span></h4>
         <button id="photo-btn" class="btn btn-outline-success btn-sm" title="Photo analysis"><i class="bi bi-camera"></i></button>
+        <button id="barcode-btn" class="btn btn-outline-warning btn-sm" title="Scan barcode"><i class="bi bi-upc-scan"></i></button>
         <button id="voice-btn" class="btn btn-outline-primary btn-sm" title="Voice input"><i class="bi bi-mic"></i></button>
         <a th:href="@{/log(date=${nextDate})}" class="btn btn-outline-secondary"><i class="bi bi-chevron-right"></i></a>
     </div>
@@ -194,7 +195,7 @@
     <div class="d-flex align-items-center justify-content-center h-100">
         <div class="card p-4 text-center" style="min-width:320px;max-width:90%;">
             <div id="photo-status" class="fs-5 mb-3">Take a photo of your meal</div>
-            <input type="file" id="photo-input" accept="image/*" capture="environment" class="form-control form-control-sm mb-3">
+            <input type="file" id="photo-input" accept="image/*" class="form-control form-control-sm mb-3">
             <div id="photo-result" class="d-none mb-3 text-start">
                 <div class="alert alert-success small">
                     <strong id="photo-desc"></strong><br>
@@ -241,29 +242,49 @@
 
     input.addEventListener('change', function() {
         if (!input.files[0]) return;
-        status.textContent = 'Analyzing...';
-        var formData = new FormData();
-        formData.append('image', input.files[0]);
+        status.textContent = 'Resizing & analyzing...';
 
-        fetch('/api/photo/analyze', {
-            method: 'POST',
-            headers: {[csrfHeader]: csrfToken},
-            body: formData
-        }).then(r => r.json()).then(function(data) {
-            if (data.success) {
-                analysisData = data;
-                document.getElementById('photo-desc').textContent = data.description;
-                document.getElementById('photo-cal').textContent = data.calories;
-                document.getElementById('photo-pro').textContent = data.protein;
-                document.getElementById('photo-carb').textContent = data.carbs;
-                document.getElementById('photo-fat').textContent = data.fat;
-                document.getElementById('photo-weight').textContent = data.weightGrams ? '~' + data.weightGrams + 'g estimated' : '';
-                resultDiv.classList.remove('d-none');
-                status.textContent = 'Analysis complete!';
-            } else {
-                status.textContent = data.error || 'Analysis failed';
-            }
-        }).catch(function(e) { status.textContent = 'Error: ' + e.message; });
+        // Resize image client-side before uploading (max 1024px)
+        var reader = new FileReader();
+        reader.onload = function(e) {
+            var img = new Image();
+            img.onload = function() {
+                var maxSize = 1024;
+                var w = img.width, h = img.height;
+                if (w > maxSize || h > maxSize) {
+                    if (w > h) { h = Math.round(h * maxSize / w); w = maxSize; }
+                    else { w = Math.round(w * maxSize / h); h = maxSize; }
+                }
+                var canvas = document.createElement('canvas');
+                canvas.width = w; canvas.height = h;
+                canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+                canvas.toBlob(function(blob) {
+                    var formData = new FormData();
+                    formData.append('image', blob, 'photo.jpg');
+                    fetch('/api/photo/analyze', {
+                        method: 'POST',
+                        headers: {[csrfHeader]: csrfToken},
+                        body: formData
+                    }).then(r => r.json()).then(function(data) {
+                        if (data.success) {
+                            analysisData = data;
+                            document.getElementById('photo-desc').textContent = data.description;
+                            document.getElementById('photo-cal').textContent = data.calories;
+                            document.getElementById('photo-pro').textContent = data.protein;
+                            document.getElementById('photo-carb').textContent = data.carbs;
+                            document.getElementById('photo-fat').textContent = data.fat;
+                            document.getElementById('photo-weight').textContent = data.weightGrams ? '~' + data.weightGrams + 'g estimated' : '';
+                            resultDiv.classList.remove('d-none');
+                            status.textContent = 'Analysis complete!';
+                        } else {
+                            status.textContent = data.error || 'Analysis failed';
+                        }
+                    }).catch(function(e) { status.textContent = 'Error: ' + e.message; });
+                }, 'image/jpeg', 0.8);
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(input.files[0]);
     });
 
     cancelBtn.addEventListener('click', function() { modal.classList.add('d-none'); });
@@ -386,6 +407,252 @@
             headers: {'Content-Type': 'application/json', [document.querySelector('meta[name=_csrf_header]').content]: document.querySelector('meta[name=_csrf]').content},
             body: JSON.stringify(parsedData)
         }).then(function() { location.reload(); });
+    });
+
+    cancelBtn.addEventListener('click', function() { modal.classList.add('d-none'); });
+})();
+</script>
+
+<!-- Barcode Scanner Modal -->
+<div id="barcode-modal" class="d-none position-fixed top-0 start-0 w-100 h-100" style="z-index:9997;background:rgba(0,0,0,0.7);">
+    <div class="d-flex align-items-center justify-content-center h-100">
+        <div class="card p-4 text-center" style="min-width:320px;max-width:90%;">
+            <div id="barcode-status" class="fs-5 mb-3">Scan a barcode</div>
+            <div id="barcode-input-area" class="mb-3">
+                <input type="text" id="barcode-text" class="form-control form-control-sm mb-2" placeholder="Enter barcode manually">
+                <button id="barcode-lookup-btn" class="btn btn-primary btn-sm w-100 mb-2">Lookup</button>
+                <div class="text-muted small">Or use camera:</div>
+                <input type="file" id="barcode-camera" accept="image/*" capture="environment" class="form-control form-control-sm">
+            </div>
+            <div id="barcode-result" class="d-none mb-3 text-start">
+                <div class="alert alert-success small">
+                    <strong id="barcode-name"></strong>
+                    <span id="barcode-qty" class="text-muted d-block"></span>
+                    <span class="text-danger" id="barcode-cal"></span> kcal |
+                    <span class="text-primary" id="barcode-pro"></span>g P |
+                    <span class="text-warning" id="barcode-carb"></span>g C |
+                    <span class="text-info" id="barcode-fat"></span>g F
+                </div>
+                <div class="mb-2">
+                    <select id="barcode-slot" class="form-select form-select-sm">
+                        <option value="">-- Slot --</option>
+                        <option value="BREAKFAST">Breakfast</option>
+                        <option value="LUNCH">Lunch</option>
+                        <option value="DINNER">Dinner</option>
+                        <option value="SNACK">Snack</option>
+                    </select>
+                </div>
+                <div class="d-flex gap-2 mb-2">
+                    <input type="number" id="barcode-quantity" class="form-control form-control-sm" step="0.01" min="0.01" value="0.1" style="width:80px;" placeholder="kg">
+                    <button id="barcode-log-btn" class="btn btn-success btn-sm flex-grow-1">Log to food diary</button>
+                </div>
+                <button id="barcode-save-btn" class="btn btn-outline-primary btn-sm w-100">Save as product (for future use)</button>
+            </div>
+            <div id="barcode-notfound" class="d-none mb-3">
+                <div class="alert alert-warning small">Product not found. Add manually:</div>
+                <input type="text" id="barcode-manual-name" class="form-control form-control-sm mb-1" placeholder="Product name">
+                <div class="row g-1 mb-1">
+                    <div class="col"><input type="number" id="barcode-manual-cal" class="form-control form-control-sm" placeholder="kcal/100g"></div>
+                    <div class="col"><input type="number" id="barcode-manual-pro" class="form-control form-control-sm" placeholder="P g"></div>
+                </div>
+                <div class="row g-1 mb-2">
+                    <div class="col"><input type="number" id="barcode-manual-carb" class="form-control form-control-sm" placeholder="C g"></div>
+                    <div class="col"><input type="number" id="barcode-manual-fat" class="form-control form-control-sm" placeholder="F g"></div>
+                </div>
+                <button id="barcode-manual-save" class="btn btn-primary btn-sm w-100">Save product</button>
+            </div>
+            <button id="barcode-cancel" class="btn btn-outline-secondary mt-2">Close</button>
+        </div>
+    </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@AsmaDhia/quagga2@1.8.4/dist/quagga.min.js"></script>
+<script>
+(function() {
+    var btn = document.getElementById('barcode-btn');
+    var modal = document.getElementById('barcode-modal');
+    var status = document.getElementById('barcode-status');
+    var inputArea = document.getElementById('barcode-input-area');
+    var resultDiv = document.getElementById('barcode-result');
+    var notfoundDiv = document.getElementById('barcode-notfound');
+    var cancelBtn = document.getElementById('barcode-cancel');
+    var lookupBtn = document.getElementById('barcode-lookup-btn');
+    var barcodeText = document.getElementById('barcode-text');
+    var csrfToken = document.querySelector('meta[name=_csrf]').content;
+    var csrfHeader = document.querySelector('meta[name=_csrf_header]').content;
+    var currentData = null;
+
+    btn.addEventListener('click', function() {
+        modal.classList.remove('d-none');
+        resultDiv.classList.add('d-none');
+        notfoundDiv.classList.add('d-none');
+        inputArea.classList.remove('d-none');
+        status.textContent = 'Scan a barcode';
+        barcodeText.value = '';
+        currentData = null;
+    });
+
+    function doLookup(barcode) {
+        status.textContent = 'Looking up ' + barcode + '...';
+        inputArea.classList.add('d-none');
+        resultDiv.classList.add('d-none');
+        notfoundDiv.classList.add('d-none');
+
+        fetch('/api/barcode/lookup', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json', [csrfHeader]: csrfToken},
+            body: JSON.stringify({barcode: barcode})
+        }).then(r => r.json()).then(function(data) {
+            if (data.found) {
+                currentData = data;
+                currentData.barcode = barcode;
+                document.getElementById('barcode-name').textContent = data.name;
+                document.getElementById('barcode-qty').textContent = data.quantity || '';
+                document.getElementById('barcode-cal').textContent = data.calories || 0;
+                document.getElementById('barcode-pro').textContent = data.protein || 0;
+                document.getElementById('barcode-carb').textContent = data.carbs || 0;
+                document.getElementById('barcode-fat').textContent = data.fat || 0;
+                resultDiv.classList.remove('d-none');
+                status.textContent = (data.source === 'local' ? '✓ Found locally' : '✓ Found on Open Food Facts');
+                // Hide "save as product" if already local
+                document.getElementById('barcode-save-btn').classList.toggle('d-none', data.source === 'local');
+            } else {
+                notfoundDiv.classList.remove('d-none');
+                status.textContent = 'Not found: ' + barcode;
+                currentData = {barcode: barcode};
+            }
+        }).catch(function(e) {
+            status.textContent = 'Error: ' + e.message;
+            inputArea.classList.remove('d-none');
+        });
+    }
+
+    lookupBtn.addEventListener('click', function() {
+        var code = barcodeText.value.trim();
+        if (code) doLookup(code);
+    });
+
+    barcodeText.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') { e.preventDefault(); lookupBtn.click(); }
+    });
+
+    // Camera-based scanning: decode barcode from image
+    document.getElementById('barcode-camera').addEventListener('change', function() {
+        var file = this.files[0];
+        if (!file) return;
+        status.textContent = 'Decoding barcode...';
+        if (typeof Quagga !== 'undefined') {
+            Quagga.decodeSingle({
+                src: URL.createObjectURL(file),
+                numOfWorkers: 0,
+                decoder: { readers: ['ean_reader', 'ean_8_reader', 'upc_reader', 'code_128_reader'] }
+            }, function(result) {
+                if (result && result.codeResult) {
+                    barcodeText.value = result.codeResult.code;
+                    doLookup(result.codeResult.code);
+                } else {
+                    status.textContent = 'Could not decode barcode from image. Try entering manually.';
+                    inputArea.classList.remove('d-none');
+                }
+            });
+        } else {
+            status.textContent = 'Barcode library not loaded. Enter manually.';
+            inputArea.classList.remove('d-none');
+        }
+    });
+
+    // Log to food diary (as product)
+    document.getElementById('barcode-log-btn').addEventListener('click', function() {
+        if (!currentData || !currentData.productId) {
+            // Need to save product first
+            saveProduct(function(productId) {
+                logProduct(productId);
+            });
+        } else {
+            logProduct(currentData.productId);
+        }
+    });
+
+    function logProduct(productId) {
+        var dateStr = document.querySelector('input[name="date"]').value;
+        var slot = document.getElementById('barcode-slot').value;
+        var qty = document.getElementById('barcode-quantity').value;
+        var form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '/log/add-product';
+        form.innerHTML = '<input name="date" value="' + dateStr + '">' +
+            '<input name="productId" value="' + productId + '">' +
+            '<input name="quantity" value="' + qty + '">' +
+            '<input name="slot" value="' + slot + '">' +
+            '<input name="_csrf" value="' + csrfToken + '">';
+        document.body.appendChild(form);
+        form.submit();
+    }
+
+    // Save as product
+    document.getElementById('barcode-save-btn').addEventListener('click', function() {
+        saveProduct(function() {
+            document.getElementById('barcode-save-btn').textContent = '✓ Saved!';
+            document.getElementById('barcode-save-btn').disabled = true;
+        });
+    });
+
+    function saveProduct(callback) {
+        var payload = {
+            barcode: currentData.barcode,
+            name: currentData.name,
+            calories: currentData.calories,
+            protein: currentData.protein,
+            carbs: currentData.carbs,
+            fat: currentData.fat,
+            fiber: currentData.fiber,
+            sugar: currentData.sugar
+        };
+        fetch('/api/barcode/save-product', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json', [csrfHeader]: csrfToken},
+            body: JSON.stringify(payload)
+        }).then(r => r.json()).then(function(data) {
+            if (data.success) {
+                currentData.productId = data.productId;
+                currentData.source = 'local';
+                if (callback) callback(data.productId);
+            } else {
+                status.textContent = 'Save failed: ' + data.error;
+            }
+        });
+    }
+
+    // Manual save (not found)
+    document.getElementById('barcode-manual-save').addEventListener('click', function() {
+        var payload = {
+            barcode: currentData.barcode,
+            name: document.getElementById('barcode-manual-name').value,
+            calories: parseFloat(document.getElementById('barcode-manual-cal').value) || null,
+            protein: parseFloat(document.getElementById('barcode-manual-pro').value) || null,
+            carbs: parseFloat(document.getElementById('barcode-manual-carb').value) || null,
+            fat: parseFloat(document.getElementById('barcode-manual-fat').value) || null
+        };
+        if (!payload.name) { status.textContent = 'Enter a product name'; return; }
+        fetch('/api/barcode/save-product', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json', [csrfHeader]: csrfToken},
+            body: JSON.stringify(payload)
+        }).then(r => r.json()).then(function(data) {
+            if (data.success) {
+                currentData = {productId: data.productId, name: data.name, source: 'local', barcode: currentData.barcode};
+                notfoundDiv.classList.add('d-none');
+                status.textContent = '✓ Product saved! You can now log it.';
+                document.getElementById('barcode-name').textContent = data.name;
+                document.getElementById('barcode-cal').textContent = payload.calories || 0;
+                document.getElementById('barcode-pro').textContent = payload.protein || 0;
+                document.getElementById('barcode-carb').textContent = payload.carbs || 0;
+                document.getElementById('barcode-fat').textContent = payload.fat || 0;
+                document.getElementById('barcode-save-btn').classList.add('d-none');
+                resultDiv.classList.remove('d-none');
+            } else {
+                status.textContent = 'Error: ' + data.error;
+            }
+        });
     });
 
     cancelBtn.addEventListener('click', function() { modal.classList.add('d-none'); });

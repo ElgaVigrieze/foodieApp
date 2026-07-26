@@ -84,6 +84,74 @@ public class NutritionLookupService {
     }
 
     /**
+     * Lookup a product by barcode on Open Food Facts.
+     * Returns product name + nutrition info if found.
+     */
+    public Optional<BarcodeResult> lookupBarcode(String barcode) {
+        try {
+            String url = "https://world.openfoodfacts.org/api/v2/product/" + barcode + ".json?fields=product_name,nutriments,brands,quantity";
+            String response = restClient.get()
+                    .uri(url)
+                    .retrieve()
+                    .body(String.class);
+
+            if (response == null || !response.contains("\"status\":1")) {
+                log.info("Barcode not found on Open Food Facts: {}", barcode);
+                return Optional.empty();
+            }
+
+            // Parse product name
+            String name = extractJsonString(response, "product_name");
+            String brands = extractJsonString(response, "brands");
+            String quantity = extractJsonString(response, "quantity");
+
+            if (name == null || name.isBlank()) {
+                name = brands != null ? brands : "Unknown product";
+            } else if (brands != null && !brands.isBlank() && !name.toLowerCase().contains(brands.toLowerCase())) {
+                name = brands + " " + name;
+            }
+
+            // Parse nutriments
+            BigDecimal calories = extractJsonNumber(response, "energy-kcal_100g");
+            BigDecimal protein = extractJsonNumber(response, "proteins_100g");
+            BigDecimal carbs = extractJsonNumber(response, "carbohydrates_100g");
+            BigDecimal fat = extractJsonNumber(response, "fat_100g");
+            BigDecimal fiber = extractJsonNumber(response, "fiber_100g");
+            BigDecimal sugar = extractJsonNumber(response, "sugars_100g");
+
+            log.info("Found barcode {}: {} ({} kcal/100g)", barcode, name, calories);
+            return Optional.of(new BarcodeResult(name, quantity, calories, protein, carbs, fat, fiber, sugar));
+
+        } catch (Exception e) {
+            log.warn("Failed to lookup barcode '{}': {}", barcode, e.getMessage());
+            return Optional.empty();
+        }
+    }
+
+    private String extractJsonString(String json, String key) {
+        java.util.regex.Pattern p = java.util.regex.Pattern.compile("\"" + key + "\"\\s*:\\s*\"([^\"]*)\"");
+        java.util.regex.Matcher m = p.matcher(json);
+        return m.find() ? m.group(1) : null;
+    }
+
+    private BigDecimal extractJsonNumber(String json, String key) {
+        java.util.regex.Pattern p = java.util.regex.Pattern.compile("\"" + key + "\"\\s*:\\s*([\\d.]+)");
+        java.util.regex.Matcher m = p.matcher(json);
+        return m.find() ? new BigDecimal(m.group(1)) : null;
+    }
+
+    public record BarcodeResult(
+            String name,
+            String quantity,
+            BigDecimal calories,
+            BigDecimal protein,
+            BigDecimal carbs,
+            BigDecimal fat,
+            BigDecimal fiber,
+            BigDecimal sugar
+    ) {}
+
+    /**
      * Fill in empty nutrition fields on a Product from Open Food Facts.
      * Only fills fields that are currently null.
      */

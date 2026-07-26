@@ -62,6 +62,9 @@ public class Product {
     @PositiveOrZero
     private BigDecimal sugar;
 
+    /** Barcode (EAN/UPC) for quick product lookup. */
+    private String barcode;
+
     /** Net carbs = carbs - fiber (computed, not persisted). */
     @Transient
     public BigDecimal getNetCarbs() {
