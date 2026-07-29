@@ -3,12 +3,13 @@ package com.foodie.service;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
 /**
- * Adds missing columns to existing H2 database tables.
- * Hibernate's ddl-auto=update sometimes fails to add columns to an existing H2 file DB.
+ * Adds missing columns and updates constraints on existing databases.
+ * Handles both H2 (local) and PostgreSQL (production).
  */
 @Component
 @RequiredArgsConstructor
@@ -17,18 +18,42 @@ public class SchemaMigrationService {
 
     private final JdbcTemplate jdbcTemplate;
 
+    @Value("${spring.datasource.url:}")
+    private String datasourceUrl;
+
     @PostConstruct
     public void migrate() {
+        boolean isPostgres = datasourceUrl.contains("postgresql");
+
+        // Add new columns
         addColumnIfNotExists("meal_plans", "frozen", "BOOLEAN DEFAULT FALSE");
         addColumnIfNotExists("meal_plan_entries", "prepared", "BOOLEAN DEFAULT FALSE");
+
+        // Update check constraints for new enum values (PostgreSQL only - H2 doesn't add these)
+        if (isPostgres) {
+            dropAndRecreateCheckConstraint("meals", "meals_category_check",
+                    "category IN ('MAIN_COURSE','SOUP','SALAD','SNACK','DESSERT','DRINK','READY_MEAL')");
+        }
     }
 
     private void addColumnIfNotExists(String table, String column, String definition) {
         try {
-            jdbcTemplate.execute("ALTER TABLE " + table + " ADD COLUMN IF NOT EXISTS " + column + " " + definition);
+            jdbcTemplate.execute(
+                    "ALTER TABLE " + table + " ADD COLUMN IF NOT EXISTS " + column + " " + definition);
             log.info("Ensured column {}.{} exists", table, column);
         } catch (Exception e) {
             log.warn("Could not add column {}.{}: {}", table, column, e.getMessage());
+        }
+    }
+
+    private void dropAndRecreateCheckConstraint(String table, String constraintName, String checkExpression) {
+        try {
+            jdbcTemplate.execute("ALTER TABLE " + table + " DROP CONSTRAINT IF EXISTS " + constraintName);
+            jdbcTemplate.execute("ALTER TABLE " + table + " ADD CONSTRAINT " + constraintName
+                    + " CHECK (" + checkExpression + ")");
+            log.info("Updated constraint {} on table {}", constraintName, table);
+        } catch (Exception e) {
+            log.warn("Could not update constraint {} on {}: {}", constraintName, table, e.getMessage());
         }
     }
 }
