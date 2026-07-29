@@ -38,6 +38,10 @@ public class MealPlan {
     @JoinColumn(name = "household_id")
     private Household household;
 
+    /** Whether this plan has been approved/frozen (entries cannot be deleted once true). */
+    @Builder.Default
+    private boolean frozen = false;
+
     @OneToMany(mappedBy = "mealPlan", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     @Builder.Default
     private List<MealPlanEntry> entries = new ArrayList<>();

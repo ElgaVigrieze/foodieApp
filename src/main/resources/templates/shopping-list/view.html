@@ -65,19 +65,24 @@
                         </thead>
                         <tbody>
                             <tr th:each="item : ${items}"
-                                th:classappend="${item.checked} ? 'table-secondary text-decoration-line-through'">
+                                th:classappend="${item.checked} ? 'table-secondary text-decoration-line-through'"
+                                style="cursor:pointer;"
+                                th:data-item-id="${item.id}"
+                                onclick="toggleItemChecked(this, event);">
                                 <td>
-                                    <form th:action="@{/shopping-list/toggle-checked}" method="post">
+                                    <form th:id="'toggle-form-' + ${item.id}"
+                                          th:action="@{/shopping-list/toggle-checked}" method="post">
                                         <input type="hidden" name="itemId" th:value="${item.id}">
                                         <input type="hidden" name="weekStart" th:value="${weekStart}">
-                                        <button type="submit" class="btn btn-sm p-0 border-0">
+                                        <button type="submit" class="btn btn-sm p-0 border-0" onclick="event.stopPropagation();">
                                             <i th:class="${item.checked} ? 'bi bi-check-square text-success' : 'bi bi-square'"></i>
                                         </button>
                                     </form>
                                 </td>
                                 <td th:text="${item.product.name}"></td>
                                 <td>
-                                    <form th:action="@{/shopping-list/update-quantity}" method="post" class="qty-form">
+                                    <form th:action="@{/shopping-list/update-quantity}" method="post" class="qty-form"
+                                          onclick="event.stopPropagation();">
                                         <input type="hidden" name="itemId" th:value="${item.id}">
                                         <input type="hidden" name="weekStart" th:value="${weekStart}">
                                         <input type="number" name="quantity" class="form-control form-control-sm shopping-qty"
@@ -89,11 +94,12 @@
                                 <td class="small" th:text="${item.product.unit.label}"></td>
                                 <td class="small hide-mobile" th:text="'€' + ${#numbers.formatDecimal(item.cost, 1, 2)}"></td>
                                 <td>
-                                    <form th:action="@{/shopping-list/remove-item}" method="post" class="d-inline">
+                                    <form th:action="@{/shopping-list/remove-item}" method="post" class="d-inline"
+                                          onclick="event.stopPropagation();">
                                         <input type="hidden" name="itemId" th:value="${item.id}">
                                         <input type="hidden" name="weekStart" th:value="${weekStart}">
                                         <button type="submit" class="btn btn-sm btn-outline-danger p-0 border-0"
-                                                onclick="return confirm('Remove?')">
+                                                onclick="event.stopPropagation(); return confirm('Remove?');">
                                             <i class="bi bi-x"></i>
                                         </button>
                                     </form>
@@ -147,6 +153,15 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
+// Click anywhere on a row to toggle checked
+function toggleItemChecked(row, event) {
+    // Don't trigger if clicking on interactive elements
+    if (event.target.closest('form') || event.target.closest('button') || event.target.closest('input')) return;
+    var itemId = row.getAttribute('data-item-id');
+    var form = document.getElementById('toggle-form-' + itemId);
+    if (form) form.submit();
+}
+
 // Auto-submit quantity on blur (when user taps away from the field)
 document.querySelectorAll('.qty-form input[name="quantity"]').forEach(function(input) {
     var originalValue = input.value;

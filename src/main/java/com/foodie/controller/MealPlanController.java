@@ -95,4 +95,21 @@ public class MealPlanController {
         mealPlanService.copyEntry(planId, entryId, newDay, newSlot);
         return "redirect:/meal-plan?week=" + weekStart;
     }
+
+    @PostMapping("/toggle-freeze")
+    public String toggleFreeze(@RequestParam Long planId,
+                               @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate weekStart,
+                               RedirectAttributes redirectAttributes) {
+        mealPlanService.toggleFreeze(planId);
+        redirectAttributes.addFlashAttribute("success", "Plan status updated.");
+        return "redirect:/meal-plan?week=" + weekStart;
+    }
+
+    @PostMapping("/toggle-prepared")
+    public String togglePrepared(@RequestParam Long planId,
+                                 @RequestParam Long entryId,
+                                 @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate weekStart) {
+        mealPlanService.togglePrepared(planId, entryId);
+        return "redirect:/meal-plan?week=" + weekStart;
+    }
 }

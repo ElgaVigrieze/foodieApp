@@ -71,6 +71,9 @@ public class MealPlanService {
     public void removeEntry(Long planId, Long entryId) {
         MealPlan plan = mealPlanRepository.findById(planId)
                 .orElseThrow(() -> new IllegalArgumentException("Plan not found: " + planId));
+        if (plan.isFrozen()) {
+            throw new IllegalStateException("Cannot remove entries from a frozen plan.");
+        }
         plan.getEntries().removeIf(e -> e.getId().equals(entryId));
         mealPlanRepository.save(plan);
     }
@@ -116,6 +119,25 @@ public class MealPlanService {
                             .build();
                     plan.addEntry(copy);
                 });
+        mealPlanRepository.save(plan);
+    }
+
+    @Transactional
+    public void toggleFreeze(Long planId) {
+        MealPlan plan = mealPlanRepository.findById(planId)
+                .orElseThrow(() -> new IllegalArgumentException("Plan not found: " + planId));
+        plan.setFrozen(!plan.isFrozen());
+        mealPlanRepository.save(plan);
+    }
+
+    @Transactional
+    public void togglePrepared(Long planId, Long entryId) {
+        MealPlan plan = mealPlanRepository.findById(planId)
+                .orElseThrow(() -> new IllegalArgumentException("Plan not found: " + planId));
+        plan.getEntries().stream()
+                .filter(e -> e.getId().equals(entryId))
+                .findFirst()
+                .ifPresent(entry -> entry.setPrepared(!entry.isPrepared()));
         mealPlanRepository.save(plan);
     }
 

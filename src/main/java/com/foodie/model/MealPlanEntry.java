@@ -40,4 +40,8 @@ public class MealPlanEntry {
     @JoinColumn(name = "meal_id", nullable = false)
     @NotNull
     private Meal meal;
+
+    /** Whether this entry's meal has been prepared/cooked already. */
+    @Builder.Default
+    private boolean prepared = false;
 }

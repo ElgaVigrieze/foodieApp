@@ -16,10 +16,23 @@
         <a th:href="@{/meal-plan(week=${prevWeek})}" class="btn btn-outline-secondary">
             <i class="bi bi-chevron-left"></i> Previous Week
         </a>
-        <h3 class="mb-0">
-            <i class="bi bi-calendar-week"></i>
-            Week of <span th:text="${#temporals.format(weekStart, 'd MMM yyyy')}"></span>
-        </h3>
+        <div class="text-center">
+            <h3 class="mb-0">
+                <i class="bi bi-calendar-week"></i>
+                Week of <span th:text="${#temporals.format(weekStart, 'd MMM yyyy')}"></span>
+            </h3>
+            <!-- Freeze/Approve button -->
+            <form th:action="@{/meal-plan/toggle-freeze}" method="post" class="d-inline mt-1">
+                <input type="hidden" name="planId" th:value="${plan.id}">
+                <input type="hidden" name="weekStart" th:value="${weekStart}">
+                <button type="submit" class="btn btn-sm mt-1"
+                        th:classappend="${plan.frozen} ? 'btn-warning' : 'btn-outline-info'"
+                        th:title="${plan.frozen} ? 'Unfreeze plan (allow deletions)' : 'Freeze plan (prevent deletions)'">
+                    <i class="bi" th:classappend="${plan.frozen} ? 'bi-unlock' : 'bi-lock'"></i>
+                    <span th:text="${plan.frozen} ? 'Unfreeze Plan' : 'Approve & Freeze'"></span>
+                </button>
+            </form>
+        </div>
         <a th:href="@{/meal-plan(week=${nextWeek})}" class="btn btn-outline-secondary">
             Next Week <i class="bi bi-chevron-right"></i>
         </a>
@@ -46,11 +59,24 @@
                                     <!-- Show meals in this slot/day -->
                                     <div th:each="entry : ${plan.entries}"
                                          th:if="${entry.dayOfWeek == day && entry.slot == slot}"
-                                         class="badge bg-success-subtle text-dark d-block mb-1 text-start p-1 meal-entry position-relative"
+                                         class="badge d-block mb-1 text-start p-1 meal-entry position-relative"
+                                         th:classappend="${entry.prepared} ? 'bg-secondary-subtle text-decoration-line-through text-muted' : 'bg-success-subtle text-dark'"
                                          draggable="true"
                                          th:data-entry-id="${entry.id}"
                                          th:data-plan-id="${plan.id}"
                                          th:data-servings="${entry.servings}">
+                                        <!-- Prepared checkbox -->
+                                        <form th:action="@{/meal-plan/toggle-prepared}" method="post" class="d-inline"
+                                              onclick="event.stopPropagation(); this.submit();">
+                                            <input type="hidden" name="planId" th:value="${plan.id}">
+                                            <input type="hidden" name="entryId" th:value="${entry.id}">
+                                            <input type="hidden" name="weekStart" th:value="${weekStart}">
+                                            <input type="checkbox" class="form-check-input form-check-input-sm"
+                                                   th:checked="${entry.prepared}"
+                                                   style="cursor:pointer; width:12px; height:12px;"
+                                                   onchange="this.form.submit();"
+                                                   onclick="event.stopPropagation();">
+                                        </form>
                                         <span class="small meal-name-label" style="cursor:pointer;"
                                               th:text="${entry.meal.name + ' (' + entry.servings + ' srv)'}"
                                               onclick="event.stopPropagation(); showEditPopover(this);"></span>
@@ -67,7 +93,8 @@
                                             </form>
                                             <a th:href="@{/meals/{id}/edit(id=${entry.meal.id})}" class="small text-primary mt-1 d-block">Edit meal</a>
                                         </div>
-                                        <form th:action="@{/meal-plan/remove}" method="post" class="d-inline float-end">
+                                        <form th:action="@{/meal-plan/remove}" method="post" class="d-inline float-end"
+                                              th:if="${!plan.frozen}">
                                             <input type="hidden" name="planId" th:value="${plan.id}">
                                             <input type="hidden" name="entryId" th:value="${entry.id}">
                                             <input type="hidden" name="weekStart" th:value="${weekStart}">
@@ -189,6 +216,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
+
 // Show/hide edit popover on meal badge click
 function showEditPopover(label) {
     // Close all other popovers
@@ -216,7 +244,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const formCard = document.getElementById('add-form-card');
     let dragData = null;
 
-    // ── Click-to-fill: click a cell to pre-fill Day/Slot ──────────────────
+    // â”€â”€ Click-to-fill: click a cell to pre-fill Day/Slot â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     document.querySelectorAll('.meal-cell').forEach(function(cell) {
         cell.addEventListener('click', function(e) {
             // Don't trigger if clicking on a button or link inside
@@ -236,7 +264,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // ── Drag & Drop ───────────────────────────────────────────────────────
+    // â”€â”€ Drag & Drop â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     document.querySelectorAll('.meal-entry').forEach(function(entry) {
         entry.addEventListener('dragstart', function(e) {
             dragData = {

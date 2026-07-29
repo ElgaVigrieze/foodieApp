@@ -8,7 +8,9 @@ public enum MealCategory {
     SOUP("Soup"),
     SALAD("Salad"),
     SNACK("Snack"),
-    DESSERT("Dessert");
+    DESSERT("Dessert"),
+    DRINK("Drink"),
+    READY_MEAL("Ready Meal");
 
     private final String label;
 

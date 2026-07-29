@@ -64,44 +64,50 @@
         </div>
     </div>
 
-    <!-- By Category -->
-    <div th:each="entry : ${mealsByCategory}">
-        <h5 class="mt-4 mb-2 text-muted">
+    <!-- By Category (collapsible) -->
+    <div th:each="entry, iterStat : ${mealsByCategory}">
+        <h5 class="mt-4 mb-2 text-muted" style="cursor:pointer;"
+            data-bs-toggle="collapse"
+            th:attr="data-bs-target='#meals-category-' + ${iterStat.index}"
+            aria-expanded="false">
+            <i class="bi bi-chevron-down me-1 collapse-chevron" style="transform:rotate(-90deg)"></i>
             <span th:text="${entry.key.label}"></span>
             <span class="badge bg-secondary small" th:text="${entry.value.size()}"></span>
         </h5>
-        <div class="row">
-            <div th:each="meal : ${entry.value}" class="col-md-6 col-lg-4 mb-3">
-                <div class="card h-100">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-start">
-                            <h5 class="card-title" th:text="${meal.name}"></h5>
-                            <span class="badge bg-info" th:text="${meal.category.label}"></span>
-                        </div>
-                        <p class="text-muted small mb-2">
-                            <span th:text="${meal.servings}"></span> servings |
-                            <span th:text="${meal.ingredients.size()}"></span> ingredients
-                        </p>
-                        <div class="row text-center small">
-                            <div class="col"><div class="fw-bold" th:text="${meal.caloriesPerServing}"></div><div class="text-muted">kcal</div></div>
-                            <div class="col"><div class="fw-bold" th:text="${meal.proteinPerServing}"></div><div class="text-muted">protein</div></div>
-                            <div class="col"><div class="fw-bold" th:text="${meal.carbsPerServing}"></div><div class="text-muted">carbs</div></div>
-                            <div class="col"><div class="fw-bold" th:text="${meal.fatPerServing}"></div><div class="text-muted">fat</div></div>
-                            <div class="col"><div class="fw-bold" th:text="${meal.fiberPerServing}"></div><div class="text-muted">fiber</div></div>
-                        </div>
-                        <hr>
-                        <div class="d-flex justify-content-between align-items-center">
-                            <span class="text-success fw-bold" th:text="'EUR ' + ${#numbers.formatDecimal(meal.costPerServing, 1, 2)} + ' / serving'"></span>
-                            <div>
-                                <form th:action="@{/meals/{id}/toggle-favorite(id=${meal.id})}" method="post" class="d-inline">
-                                    <button type="submit" class="btn btn-sm p-0 border-0"><i class="bi bi-star text-muted"></i></button>
-                                </form>
-                                <a th:href="@{/meals/{id}(id=${meal.id})}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-eye"></i></a>
-                                <a th:href="@{/meals/{id}/copy(id=${meal.id})}" class="btn btn-sm btn-outline-info"><i class="bi bi-copy"></i></a>
-                                <a th:href="@{/meals/{id}/edit(id=${meal.id})}" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>
-                                <form th:action="@{/meals/{id}/delete(id=${meal.id})}" method="post" class="d-inline" onsubmit="return confirm('Delete this meal?')">
-                                    <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
-                                </form>
+        <div class="collapse" th:id="'meals-category-' + ${iterStat.index}">
+            <div class="row">
+                <div th:each="meal : ${entry.value}" class="col-md-6 col-lg-4 mb-3">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <h5 class="card-title" th:text="${meal.name}"></h5>
+                                <span class="badge bg-info" th:text="${meal.category.label}"></span>
+                            </div>
+                            <p class="text-muted small mb-2">
+                                <span th:text="${meal.servings}"></span> servings |
+                                <span th:text="${meal.ingredients.size()}"></span> ingredients
+                            </p>
+                            <div class="row text-center small">
+                                <div class="col"><div class="fw-bold" th:text="${meal.caloriesPerServing}"></div><div class="text-muted">kcal</div></div>
+                                <div class="col"><div class="fw-bold" th:text="${meal.proteinPerServing}"></div><div class="text-muted">protein</div></div>
+                                <div class="col"><div class="fw-bold" th:text="${meal.carbsPerServing}"></div><div class="text-muted">carbs</div></div>
+                                <div class="col"><div class="fw-bold" th:text="${meal.fatPerServing}"></div><div class="text-muted">fat</div></div>
+                                <div class="col"><div class="fw-bold" th:text="${meal.fiberPerServing}"></div><div class="text-muted">fiber</div></div>
+                            </div>
+                            <hr>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="text-success fw-bold" th:text="'EUR ' + ${#numbers.formatDecimal(meal.costPerServing, 1, 2)} + ' / serving'"></span>
+                                <div>
+                                    <form th:action="@{/meals/{id}/toggle-favorite(id=${meal.id})}" method="post" class="d-inline">
+                                        <button type="submit" class="btn btn-sm p-0 border-0"><i class="bi bi-star text-muted"></i></button>
+                                    </form>
+                                    <a th:href="@{/meals/{id}(id=${meal.id})}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-eye"></i></a>
+                                    <a th:href="@{/meals/{id}/copy(id=${meal.id})}" class="btn btn-sm btn-outline-info"><i class="bi bi-copy"></i></a>
+                                    <a th:href="@{/meals/{id}/edit(id=${meal.id})}" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>
+                                    <form th:action="@{/meals/{id}/delete(id=${meal.id})}" method="post" class="d-inline" onsubmit="return confirm('Delete this meal?')">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                                    </form>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -117,5 +123,19 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+// Rotate chevron on collapse toggle
+document.querySelectorAll('[data-bs-toggle="collapse"]').forEach(function(toggle) {
+    var target = document.querySelector(toggle.getAttribute('data-bs-target'));
+    if (target) {
+        target.addEventListener('hide.bs.collapse', function() {
+            toggle.querySelector('.collapse-chevron').style.transform = 'rotate(-90deg)';
+        });
+        target.addEventListener('show.bs.collapse', function() {
+            toggle.querySelector('.collapse-chevron').style.transform = 'rotate(0deg)';
+        });
+    }
+});
+</script>
 </body>
 </html>

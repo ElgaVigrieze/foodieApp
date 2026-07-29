@@ -14,3 +14,8 @@ body {
     font-size: 0.75rem;
     padding: 0.25rem 0.5rem;
 }
+
+.collapse-chevron {
+    transition: transform 0.2s ease;
+    display: inline-block;
+}
