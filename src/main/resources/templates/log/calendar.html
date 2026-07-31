@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Calendar - Foodie')}"></head>
+<style>
+.cal-cell { height: 110px; min-width: 90px; vertical-align: top; padding: 4px; }
+.cal-day-num { font-size: 0.75rem; font-weight: 600; }
+.cal-metrics { font-size: 0.6rem; line-height: 1.5; margin-top: 3px; }
+.cal-metric-row { display: flex; justify-content: space-between; }
+.cal-metric-label { color: #888; }
+.met  { color: #198754; font-weight: 600; }
+.miss { color: #dc3545; font-weight: 600; }
+.neutral { color: #495057; }
+</style>
+<body>
+<nav th:replace="~{fragments/layout :: navbar}"></nav>
+
+<div class="container-fluid px-3">
+    <div class="d-flex align-items-center gap-2 mb-3 mt-2">
+        <a href="/log" class="btn btn-outline-secondary btn-sm"><i class="bi bi-journal-text"></i> Food Log</a>
+        <a href="/log/targets" class="btn btn-outline-secondary btn-sm"><i class="bi bi-bullseye"></i> Targets</a>
+    </div>
+
+    <!-- Month navigation -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <a th:href="@{/log/calendar(month=${prevMonth})}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-chevron-left"></i>
+        </a>
+        <h5 class="mb-0" th:text="${#temporals.format(yearMonth.atDay(1), 'MMMM yyyy')}"></h5>
+        <a th:href="@{/log/calendar(month=${nextMonth})}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-chevron-right"></i>
+        </a>
+    </div>
+
+    <!-- Legend -->
+    <div class="d-flex gap-3 mb-3 flex-wrap">
+        <span class="d-flex align-items-center gap-1 small">
+            <span class="rounded" style="width:14px;height:14px;background:#d1e7dd;display:inline-block;border:1px solid #a3cfbb;"></span>
+            All targets met
+        </span>
+        <span class="d-flex align-items-center gap-1 small">
+            <span class="rounded" style="width:14px;height:14px;background:#f8d7da;display:inline-block;border:1px solid #f1aeb5;"></span>
+            Target missed
+        </span>
+        <span class="d-flex align-items-center gap-1 small">
+            <span class="rounded" style="width:14px;height:14px;background:#e9ecef;display:inline-block;border:1px solid #dee2e6;"></span>
+            No food logged
+        </span>
+        <span class="d-flex align-items-center gap-1 small met"><i class="bi bi-check-circle-fill"></i> target met</span>
+        <span class="d-flex align-items-center gap-1 small miss"><i class="bi bi-x-circle-fill"></i> target missed</span>
+    </div>
+
+    <!-- No targets notice -->
+    <div th:if="${currentUser != null and currentUser.targetCalories == null and currentUser.targetProtein == null and currentUser.targetCarbs == null and currentUser.targetFat == null and currentUser.targetFiber == null and currentUser.targetCost == null}"
+         class="alert alert-info d-flex align-items-center gap-2 py-2 small">
+        <i class="bi bi-info-circle"></i>
+        No targets set yet. <a href="/log/targets" class="alert-link">Set targets</a> to see color-coded days.
+    </div>
+
+    <!-- Calendar grid -->
+    <div class="table-responsive">
+        <table class="table table-bordered mb-0" style="table-layout: fixed;">
+            <thead class="table-light">
+                <tr>
+                    <th class="small py-1 text-center">Mon</th>
+                    <th class="small py-1 text-center">Tue</th>
+                    <th class="small py-1 text-center">Wed</th>
+                    <th class="small py-1 text-center">Thu</th>
+                    <th class="small py-1 text-center">Fri</th>
+                    <th class="small py-1 text-center">Sat</th>
+                    <th class="small py-1 text-center">Sun</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="week : ${weeks}">
+                    <td th:each="day : ${week}"
+                        th:with="s=${day > 0 ? calendarData.get(day) : null},
+                                 dateStr=${day > 0 ? yearMonth.atDay(day).toString() : null},
+                                 isToday=${day > 0 and yearMonth.atDay(day).equals(today)}"
+                        th:style="${day == 0 ? 'background:#f8f9fa;' :
+                                   (s != null and s.hasEntries() and s.allTargetsMet() != null and s.allTargetsMet()) ? 'background:#d1e7dd;' :
+                                   (s != null and s.hasEntries() and s.allTargetsMet() != null and !s.allTargetsMet()) ? 'background:#f8d7da;' :
+                                   (s != null and !s.hasEntries()) ? 'background:#e9ecef;' :
+                                   'background:#ffffff;'}"
+                        class="cal-cell">
+                        <th:block th:if="${day > 0}">
+                            <a th:href="@{/log(date=${dateStr})}" class="text-decoration-none text-body d-block">
+
+                                <!-- Day number + status icon -->
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="cal-day-num"
+                                          th:classappend="${isToday} ? ' badge bg-primary text-white'"
+                                          th:text="${day}"></span>
+                                    <span th:if="${s != null and s.hasEntries() and s.allTargetsMet() != null and s.allTargetsMet()}"
+                                          class="met" style="font-size:0.65rem;"><i class="bi bi-check-circle-fill"></i></span>
+                                    <span th:if="${s != null and s.hasEntries() and s.allTargetsMet() != null and !s.allTargetsMet()}"
+                                          class="miss" style="font-size:0.65rem;"><i class="bi bi-x-circle-fill"></i></span>
+                                </div>
+
+                                <!-- Per-target metrics (only when food was logged) -->
+                                <div th:if="${s != null and s.hasEntries()}" class="cal-metrics">
+
+                                    <!-- Calories -->
+                                    <div th:if="${currentUser != null and currentUser.targetCalories != null}"
+                                         class="cal-metric-row">
+                                        <span class="cal-metric-label">kcal</span>
+                                        <span th:text="${#numbers.formatDecimal(s.calories(), 1, 0)}"
+                                              th:classappend="${s.calories().compareTo(currentUser.targetCalories) < 0} ? 'met' : 'miss'"></span>
+                                    </div>
+                                    <div th:if="${currentUser == null or currentUser.targetCalories == null}" class="cal-metric-row">
+                                        <span class="cal-metric-label">kcal</span>
+                                        <span class="neutral" th:text="${#numbers.formatDecimal(s.calories(), 1, 0)}"></span>
+                                    </div>
+
+                                    <!-- Protein -->
+                                    <div th:if="${currentUser != null and currentUser.targetProtein != null}"
+                                         class="cal-metric-row">
+                                        <span class="cal-metric-label">P</span>
+                                        <span th:text="${#numbers.formatDecimal(s.protein(), 1, 0) + 'g'}"
+                                              th:classappend="${s.protein().compareTo(currentUser.targetProtein) >= 0} ? 'met' : 'miss'"></span>
+                                    </div>
+                                    <div th:if="${currentUser == null or currentUser.targetProtein == null}" class="cal-metric-row">
+                                        <span class="cal-metric-label">P</span>
+                                        <span class="neutral" th:text="${#numbers.formatDecimal(s.protein(), 1, 0) + 'g'}"></span>
+                                    </div>
+
+                                    <!-- Carbs -->
+                                    <div th:if="${currentUser != null and currentUser.targetCarbs != null}"
+                                         class="cal-metric-row">
+                                        <span class="cal-metric-label">C</span>
+                                        <span th:text="${#numbers.formatDecimal(s.carbs(), 1, 0) + 'g'}"
+                                              th:classappend="${s.carbs().compareTo(currentUser.targetCarbs) < 0} ? 'met' : 'miss'"></span>
+                                    </div>
+                                    <div th:if="${currentUser == null or currentUser.targetCarbs == null}" class="cal-metric-row">
+                                        <span class="cal-metric-label">C</span>
+                                        <span class="neutral" th:text="${#numbers.formatDecimal(s.carbs(), 1, 0) + 'g'}"></span>
+                                    </div>
+
+                                    <!-- Fat -->
+                                    <div th:if="${currentUser != null and currentUser.targetFat != null}"
+                                         class="cal-metric-row">
+                                        <span class="cal-metric-label">F</span>
+                                        <span th:text="${#numbers.formatDecimal(s.fat(), 1, 0) + 'g'}"
+                                              th:classappend="${s.fat().compareTo(currentUser.targetFat) >= 0} ? 'met' : 'miss'"></span>
+                                    </div>
+                                    <div th:if="${currentUser == null or currentUser.targetFat == null}" class="cal-metric-row">
+                                        <span class="cal-metric-label">F</span>
+                                        <span class="neutral" th:text="${#numbers.formatDecimal(s.fat(), 1, 0) + 'g'}"></span>
+                                    </div>
+
+                                    <!-- Fiber -->
+                                    <div th:if="${currentUser != null and currentUser.targetFiber != null}"
+                                         class="cal-metric-row">
+                                        <span class="cal-metric-label">Fb</span>
+                                        <span th:text="${#numbers.formatDecimal(s.fiber(), 1, 0) + 'g'}"
+                                              th:classappend="${s.fiber().compareTo(currentUser.targetFiber) >= 0} ? 'met' : 'miss'"></span>
+                                    </div>
+                                    <div th:if="${currentUser == null or currentUser.targetFiber == null}" class="cal-metric-row">
+                                        <span class="cal-metric-label">Fb</span>
+                                        <span class="neutral" th:text="${#numbers.formatDecimal(s.fiber(), 1, 0) + 'g'}"></span>
+                                    </div>
+
+                                    <!-- Cost -->
+                                    <div th:if="${currentUser != null and currentUser.targetCost != null}"
+                                         class="cal-metric-row">
+                                        <span class="cal-metric-label">€</span>
+                                        <span th:text="${#numbers.formatDecimal(s.cost(), 1, 2)}"
+                                              th:classappend="${s.cost().compareTo(currentUser.targetCost) < 0} ? 'met' : 'miss'"></span>
+                                    </div>
+                                    <div th:if="${currentUser == null or currentUser.targetCost == null}" class="cal-metric-row">
+                                        <span class="cal-metric-label">€</span>
+                                        <span class="neutral" th:text="${#numbers.formatDecimal(s.cost(), 1, 2)}"></span>
+                                    </div>
+
+                                </div>
+                            </a>
+                        </th:block>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

@@ -10,7 +10,10 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.List;
+import java.util.Map;
+import java.util.LinkedHashMap;
 
 @Service
 @RequiredArgsConstructor
@@ -149,4 +152,85 @@ public class FoodLogService {
             BigDecimal calories, BigDecimal protein, BigDecimal carbs,
             BigDecimal fat, BigDecimal fiber, BigDecimal sugar, BigDecimal netCarbs
     ) {}
+
+    public record DayStatus(boolean hasEntries, Boolean allTargetsMet,
+                             BigDecimal calories, BigDecimal protein, BigDecimal carbs,
+                             BigDecimal fat, BigDecimal fiber, BigDecimal cost) {}
+
+    /** Convenience constructor for days with no entries. */
+    private static DayStatus noEntries() {
+        return new DayStatus(false, null,
+                BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+                BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO);
+    }
+
+    /**
+     * Returns a map of day-of-month -> DayStatus for a given month.
+     * DayStatus.hasEntries = true if any food was logged
+     * DayStatus.allTargetsMet = null if no targets set OR no entries, true if all set targets met, false otherwise
+     */
+    public Map<Integer, DayStatus> getMonthlyCalendarData(YearMonth month, AppUser user) {
+        Map<Integer, DayStatus> result = new LinkedHashMap<>();
+        LocalDate start = month.atDay(1);
+        LocalDate end = month.atEndOfMonth();
+
+        List<FoodLog> entries;
+        if (user != null) {
+            entries = foodLogRepository.findByDateBetweenAndOwnerIdOrderByDateAscIdAsc(start, end, user.getId());
+        } else {
+            entries = foodLogRepository.findByDateBetweenOrderByDateAscIdAsc(start, end);
+        }
+
+        // Group entries by day
+        Map<Integer, List<FoodLog>> byDay = new LinkedHashMap<>();
+        for (FoodLog e : entries) {
+            int day = e.getDate().getDayOfMonth();
+            byDay.computeIfAbsent(day, k -> new java.util.ArrayList<>()).add(e);
+        }
+
+        boolean hasAnyTarget = user != null && (
+                user.getTargetCalories() != null || user.getTargetFiber() != null ||
+                user.getTargetCarbs() != null || user.getTargetFat() != null ||
+                user.getTargetProtein() != null || user.getTargetCost() != null);
+
+        for (int day = 1; day <= month.lengthOfMonth(); day++) {
+            List<FoodLog> dayEntries = byDay.get(day);
+            boolean hasEntries = dayEntries != null && !dayEntries.isEmpty();
+
+            if (!hasEntries) {
+                result.put(day, noEntries());
+                continue;
+            }
+
+            // Compute totals for the day
+            BigDecimal cal = BigDecimal.ZERO, pro = BigDecimal.ZERO;
+            BigDecimal carb = BigDecimal.ZERO, fat = BigDecimal.ZERO, fib = BigDecimal.ZERO;
+            BigDecimal cost = BigDecimal.ZERO;
+            for (FoodLog e : dayEntries) {
+                cal = cal.add(e.getCalories());
+                pro = pro.add(e.getProtein());
+                carb = carb.add(e.getCarbs());
+                fat = fat.add(e.getFat());
+                fib = fib.add(e.getFiber());
+                cost = cost.add(e.getCost());
+            }
+
+            if (!hasAnyTarget) {
+                result.put(day, new DayStatus(true, null, cal, pro, carb, fat, fib, cost));
+                continue;
+            }
+
+            boolean allMet = true;
+            if (user.getTargetCalories() != null) allMet &= cal.compareTo(user.getTargetCalories()) < 0;
+            if (user.getTargetFiber() != null)    allMet &= fib.compareTo(user.getTargetFiber()) >= 0;
+            if (user.getTargetCarbs() != null)    allMet &= carb.compareTo(user.getTargetCarbs()) < 0;
+            if (user.getTargetFat() != null)      allMet &= fat.compareTo(user.getTargetFat()) >= 0;
+            if (user.getTargetProtein() != null)  allMet &= pro.compareTo(user.getTargetProtein()) >= 0;
+            if (user.getTargetCost() != null)     allMet &= cost.compareTo(user.getTargetCost()) < 0;
+
+            result.put(day, new DayStatus(true, allMet, cal, pro, carb, fat, fib, cost));
+        }
+
+        return result;
+    }
 }

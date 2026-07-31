@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Nutrition Targets - Foodie')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: navbar}"></nav>
+
+<div class="container" style="max-width: 600px;">
+    <div class="d-flex align-items-center gap-2 mb-3 mt-2">
+        <a href="/log" class="btn btn-outline-secondary btn-sm"><i class="bi bi-chevron-left"></i> Food Log</a>
+        <a href="/log/calendar" class="btn btn-outline-secondary btn-sm"><i class="bi bi-calendar3"></i> Calendar</a>
+    </div>
+
+    <h4 class="mb-3"><i class="bi bi-bullseye"></i> Daily Nutrition Targets</h4>
+
+    <div th:if="${success}" class="alert alert-success alert-dismissible fade show" role="alert">
+        <span th:text="${success}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <strong>Set optional targets</strong>
+            <span class="text-muted small ms-2">Leave blank to disable a target</span>
+        </div>
+        <div class="card-body">
+            <form th:action="@{/log/targets}" method="post">
+                <div class="mb-3">
+                    <label class="form-label">
+                        <span class="text-danger fw-semibold"><i class="bi bi-fire"></i> Calories max</span>
+                        <span class="text-muted small">(met if daily kcal &lt; target)</span>
+                    </label>
+                    <div class="input-group">
+                        <input type="number" name="targetCalories" class="form-control"
+                               step="any" min="0" placeholder="e.g. 2000"
+                               th:value="${user?.targetCalories}">
+                        <span class="input-group-text">kcal</span>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">
+                        <span class="text-primary fw-semibold"><i class="bi bi-egg-fried"></i> Protein min</span>
+                        <span class="text-muted small">(met if daily protein &ge; target)</span>
+                    </label>
+                    <div class="input-group">
+                        <input type="number" name="targetProtein" class="form-control"
+                               step="any" min="0" placeholder="e.g. 150"
+                               th:value="${user?.targetProtein}">
+                        <span class="input-group-text">g</span>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">
+                        <span class="text-warning fw-semibold"><i class="bi bi-grid-1x2"></i> Carbs max</span>
+                        <span class="text-muted small">(met if daily carbs &lt; target)</span>
+                    </label>
+                    <div class="input-group">
+                        <input type="number" name="targetCarbs" class="form-control"
+                               step="any" min="0" placeholder="e.g. 250"
+                               th:value="${user?.targetCarbs}">
+                        <span class="input-group-text">g</span>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">
+                        <span class="text-info fw-semibold"><i class="bi bi-droplet"></i> Fat min</span>
+                        <span class="text-muted small">(met if daily fat &ge; target)</span>
+                    </label>
+                    <div class="input-group">
+                        <input type="number" name="targetFat" class="form-control"
+                               step="any" min="0" placeholder="e.g. 60"
+                               th:value="${user?.targetFat}">
+                        <span class="input-group-text">g</span>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">
+                        <span class="text-success fw-semibold"><i class="bi bi-flower1"></i> Fiber min</span>
+                        <span class="text-muted small">(met if daily fiber &ge; target)</span>
+                    </label>
+                    <div class="input-group">
+                        <input type="number" name="targetFiber" class="form-control"
+                               step="any" min="0" placeholder="e.g. 30"
+                               th:value="${user?.targetFiber}">
+                        <span class="input-group-text">g</span>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">
+                        <span class="fw-semibold" style="color:#6f42c1;"><i class="bi bi-currency-euro"></i> Cost max</span>
+                        <span class="text-muted small">(met if daily cost &lt; target)</span>
+                    </label>
+                    <div class="input-group">
+                        <input type="number" name="targetCost" class="form-control"
+                               step="0.01" min="0" placeholder="e.g. 10.00"
+                               th:value="${user?.targetCost}">
+                        <span class="input-group-text">EUR</span>
+                    </div>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-check-lg"></i> Save Targets
+                    </button>
+                    <a href="/log/calendar" class="btn btn-outline-secondary">
+                        <i class="bi bi-calendar3"></i> View Calendar
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card mt-3 bg-light border-0" th:if="${user != null and (user.targetCalories != null or user.targetProtein != null or user.targetCarbs != null or user.targetFat != null or user.targetFiber != null)}">
+        <div class="card-body py-2">
+            <div class="small text-muted mb-1">Current targets:</div>
+            <div class="d-flex flex-wrap gap-2">
+                <span th:if="${user.targetCalories != null}" class="badge bg-danger">
+                    &lt; <span th:text="${user.targetCalories}"></span> kcal
+                </span>
+                <span th:if="${user.targetProtein != null}" class="badge bg-primary">
+                    &ge; <span th:text="${user.targetProtein}"></span>g protein
+                </span>
+                <span th:if="${user.targetCarbs != null}" class="badge bg-warning text-dark">
+                    &lt; <span th:text="${user.targetCarbs}"></span>g carbs
+                </span>
+                <span th:if="${user.targetFat != null}" class="badge bg-info text-dark">
+                    &ge; <span th:text="${user.targetFat}"></span>g fat
+                </span>
+                <span th:if="${user.targetFiber != null}" class="badge bg-success">
+                    &ge; <span th:text="${user.targetFiber}"></span>g fiber
+                </span>
+                <span th:if="${user.targetCost != null}" class="badge" style="background:#6f42c1;">
+                    &lt; <span th:text="${user.targetCost}"></span> EUR/day
+                </span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

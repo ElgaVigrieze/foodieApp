@@ -7,6 +7,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
 
 @Service
 @RequiredArgsConstructor
@@ -45,5 +48,19 @@ public class CurrentUserService {
 
     public boolean hasHousehold() {
         return getCurrentHousehold() != null;
+    }
+
+    @Transactional
+    public void saveTargets(BigDecimal calories, BigDecimal fiber, BigDecimal carbs,
+                            BigDecimal fat, BigDecimal protein, BigDecimal cost) {
+        AppUser user = getCurrentUser();
+        if (user == null) return;
+        user.setTargetCalories(calories);
+        user.setTargetFiber(fiber);
+        user.setTargetCarbs(carbs);
+        user.setTargetFat(fat);
+        user.setTargetProtein(protein);
+        user.setTargetCost(cost);
+        appUserRepository.save(user);
     }
 }

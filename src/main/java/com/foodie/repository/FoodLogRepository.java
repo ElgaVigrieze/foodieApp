@@ -10,4 +10,5 @@ public interface FoodLogRepository extends JpaRepository<FoodLog, Long> {
     List<FoodLog> findByDateBetweenOrderByDateAscIdAsc(LocalDate start, LocalDate end);
     List<FoodLog> findByDateAndOwnerIdOrderByIdAsc(LocalDate date, Long ownerId);
     List<FoodLog> findByDateAndHouseholdIdOrderByIdAsc(LocalDate date, Long householdId);
+    List<FoodLog> findByDateBetweenAndOwnerIdOrderByDateAscIdAsc(LocalDate start, LocalDate end, Long ownerId);
 }

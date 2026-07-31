@@ -2,6 +2,7 @@ package com.foodie.model;
 
 import jakarta.persistence.*;
 import lombok.*;
+import java.math.BigDecimal;
 
 @Entity
 @Table(name = "app_users")
@@ -32,4 +33,11 @@ public class AppUser {
     public boolean isOwner() {
         return HouseholdRole.OWNER.equals(householdRole);
     }
+
+    private BigDecimal targetCalories;
+    private BigDecimal targetFiber;
+    private BigDecimal targetCarbs;
+    private BigDecimal targetFat;
+    private BigDecimal targetProtein;
+    private BigDecimal targetCost;
 }
