@@ -41,7 +41,7 @@ public class SchemaMigrationService {
         // Update check constraints for new enum values (PostgreSQL only - H2 doesn't add these)
         if (isPostgres) {
             dropAndRecreateCheckConstraint("meals", "meals_category_check",
-                    "category IN ('MAIN_COURSE','SOUP','SALAD','SNACK','DESSERT','DRINK','SAUCE')");
+                    "category IN ('MAIN_COURSE','SOUP','SALAD','SNACK','DESSERT','DRINK','SAUCE','SIDE')");
             // No new enum constraints needed for fitness tables - they use VARCHAR
         }
     }
