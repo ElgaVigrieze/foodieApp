@@ -41,6 +41,7 @@ public class ShoppingListController {
         model.addAttribute("items", items);
         model.addAttribute("totalCost", shoppingListService.getTotalCost(items));
         model.addAttribute("products", productService.findAll());
+        model.addAttribute("currentWeekStart", LocalDate.now().with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)));
         return "shopping-list/view";
     }
 

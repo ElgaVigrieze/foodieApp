@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Workout - Foodie')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: navbar}"></nav>
+
+<div class="container">
+
+    <div th:if="${success}" class="alert alert-success alert-dismissible fade show" role="alert">
+        <span th:text="${success}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h2 class="mb-1" th:text="${workout.name}"></h2>
+            <div class="d-flex align-items-center gap-2">
+                <span class="badge fs-6"
+                      th:classappend="${workout.type.name() == 'RUNNING' ? 'bg-primary' : workout.type.name() == 'WALKING' ? 'bg-info text-dark' :
+                                       workout.type.name() == 'HIIT' ? 'bg-warning text-dark' :
+                                       workout.type.name() == 'STRENGTH' ? 'bg-danger' :
+                                       workout.type.name() == 'PILATES' ? 'bg-secondary' :
+                                       workout.type.name() == 'PLYO' ? 'bg-success' : 'bg-dark'}"
+                      th:text="${workout.type.label}"></span>
+                <span th:if="${workout.totalMinutes != null}" class="text-muted">
+                    <i class="bi bi-clock"></i> <span th:text="${workout.totalMinutes}"></span> min
+                </span>
+            </div>
+        </div>
+        <div class="d-flex gap-2">
+            <a th:href="@{/fitness/workouts/{id}/edit(id=${workout.id})}" class="btn btn-outline-primary">
+                <i class="bi bi-pencil"></i> Edit
+            </a>
+            <a th:href="@{/fitness/workouts}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Back
+            </a>
+        </div>
+    </div>
+
+    <!-- Calorie strip -->
+    <div th:if="${workout.estimatedKcal != null or workout.actualKcal != null}"
+         class="d-flex gap-3 mb-3">
+        <div th:if="${workout.estimatedKcal != null}" class="card px-3 py-2 border-0 bg-light text-center">
+            <div class="fs-5 fw-bold text-warning" th:text="${workout.estimatedKcal}"></div>
+            <div class="small text-muted">est. kcal</div>
+        </div>
+        <div th:if="${workout.actualKcal != null}" class="card px-3 py-2 border-0 bg-light text-center">
+            <div class="fs-5 fw-bold text-success" th:text="${workout.actualKcal}"></div>
+            <div class="small text-muted">actual kcal</div>
+        </div>
+    </div>
+
+    <!-- Notes -->
+    <div th:if="${workout.notes != null && !workout.notes.isBlank()}" class="alert alert-light border mb-3">
+        <i class="bi bi-journal-text"></i> <span th:text="${workout.notes}"></span>
+    </div>
+
+    <!-- YouTube link/embed -->
+    <div th:if="${workout.youtubeUrl != null && !workout.youtubeUrl.isBlank()}" class="mb-3">
+        <a th:href="${workout.youtubeUrl}" target="_blank" class="btn btn-outline-danger">
+            <i class="bi bi-youtube"></i> Watch on YouTube
+        </a>
+    </div>
+
+    <!-- ==================== RUNNING ==================== -->
+    <div th:if="${workout.type.name() == 'RUNNING' or workout.type.name() == 'WALKING'}">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-person-walking"></i> Run Details</h5>
+                <div class="row text-center">
+                    <div class="col">
+                        <div class="display-6 fw-bold text-info" th:text="${parsedSets['tempo'] ?: '-'}"></div>
+                        <div class="text-muted small">Tempo</div>
+                    </div>
+                    <div class="col">
+                        <div class="display-6 fw-bold text-primary" th:text="${parsedSets['distanceKm'] ?: 0}"></div>
+                        <div class="text-muted small">km</div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== HIIT ==================== -->
+    <div th:if="${workout.type.name() == 'HIIT'}">
+        <div class="card mb-3">
+            <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-lightning-charge"></i> HIIT Session</h5>
+                <div class="row mb-3">
+                    <div class="col-md-3 text-center">
+                        <div class="fw-bold" th:text="${parsedSets['hiitType'] ?: 'RUNNING'}"></div>
+                        <div class="text-muted small">Type</div>
+                    </div>
+                    <div class="col-md-3 text-center">
+                        <div class="fw-bold" th:text="${parsedSets['warmupSecs'] ?: 0}"></div>
+                        <div class="text-muted small">Warmup (secs)</div>
+                    </div>
+                    <div class="col-md-3 text-center">
+                        <div class="fw-bold" th:text="${parsedSets['numberOfSets'] ?: 1}"></div>
+                        <div class="text-muted small">Sets</div>
+                    </div>
+                    <div class="col-md-3 text-center">
+                        <div class="fw-bold" th:text="${parsedSets['cooldownSecs'] ?: 0}"></div>
+                        <div class="text-muted small">Cooldown (secs)</div>
+                    </div>
+                </div>
+
+                <!-- Timer -->
+                <div class="text-center my-3">
+                    <div class="display-1 fw-bold font-monospace" id="timer-display">00:00</div>
+                    <div class="fs-4 text-muted mb-3" id="phase-label">Ready</div>
+                    <div class="d-flex justify-content-center gap-3">
+                        <button class="btn btn-success btn-lg" id="btn-start">
+                            <i class="bi bi-play-fill"></i> Start
+                        </button>
+                        <button class="btn btn-warning btn-lg" id="btn-pause" disabled>
+                            <i class="bi bi-pause-fill"></i> Pause
+                        </button>
+                        <button class="btn btn-secondary btn-lg" id="btn-reset">
+                            <i class="bi bi-arrow-counterclockwise"></i> Reset
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Phase progress -->
+                <div id="phase-progress" class="mt-3">
+                    <div class="progress" style="height: 8px;">
+                        <div class="progress-bar bg-warning" id="phase-progress-bar" style="width:0%"></div>
+                    </div>
+                    <div class="d-flex justify-content-between small text-muted mt-1">
+                        <span id="phase-info-left"></span>
+                        <span id="phase-info-right"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== STRENGTH ==================== -->
+    <div th:if="${workout.type.name() == 'STRENGTH'}">
+        <div class="card mb-3">
+            <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-activity"></i> Exercises</h5>
+                <div th:if="${parsedSets['sets'] == null || #lists.isEmpty(parsedSets['sets'])}"
+                     class="text-muted">No exercises defined.</div>
+
+                <!-- Each exercise with per-set checkboxes -->
+                <div th:each="set, exStat : ${parsedSets['sets']}" class="mb-3 pb-2 border-bottom">
+                    <!-- Header: exercise name · weight · reps/set · x N sets -->
+                    <div class="d-flex align-items-center gap-2 mb-2 flex-wrap">
+                        <span class="fw-semibold" th:text="${set['exercise']}"></span>
+                        <span th:if="${set['weightKg'] != null and set['weightKg'] != 0}"
+                              class="badge bg-secondary"
+                              th:text="${set['weightKg'] + ' kg'}"></span>
+                        <span class="text-muted small" th:text="${set['reps'] + ' reps/set'}"></span>
+                        <span class="text-muted small" th:text="${'× ' + (set['numSets'] ?: 3) + ' sets'}"></span>
+                    </div>
+                    <!-- Per-set checkboxes -->
+                    <div class="d-flex flex-wrap gap-2">
+                        <div th:each="setNum : ${#numbers.sequence(1, (set['numSets'] ?: 3))}">
+                            <div class="form-check">
+                                <input class="form-check-input strength-check" type="checkbox"
+                                       th:id="'check-' + ${exStat.index} + '-' + ${setNum}"
+                                       th:data-ex="${exStat.index}"
+                                       th:data-set="${setNum}"
+                                       th:data-workout="${workout.id}">
+                                <label class="form-check-label small"
+                                       th:for="'check-' + ${exStat.index} + '-' + ${setNum}"
+                                       th:text="'Set ' + ${setNum}"></label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="all-done-banner" class="alert alert-success mt-2" style="display:none">
+                    <i class="bi bi-trophy-fill"></i> All sets done!
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- ==================== PLYO ==================== -->
+    <div th:if="${workout.type.name() == 'PLYO'}">
+        <div class="card mb-3">
+            <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-lightning"></i> Plyo Sets</h5>
+                <div th:if="${parsedSets['sets'] == null || #lists.isEmpty(parsedSets['sets'])}"
+                     class="text-muted">No sets defined.</div>
+                <ul class="list-group list-group-flush">
+                    <li th:each="set, stat : ${parsedSets['sets']}"
+                        class="list-group-item d-flex justify-content-between">
+                        <span class="fw-semibold" th:text="${set['jumpType']}"></span>
+                        <span class="text-muted" th:text="${set['reps'] + ' reps'}"></span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== PILATES / REHAB ==================== -->
+    <div th:if="${workout.type.name() == 'PILATES' || workout.type.name() == 'REHAB'}">
+        <div class="card mb-3">
+            <div class="card-body">
+                <h5 class="card-title">
+                    <i th:classappend="${workout.type.name() == 'REHAB' ? 'bi bi-bandaid' : 'bi bi-heart-pulse'}"
+                       class="bi"></i>
+                    Sets
+                </h5>
+                <div th:if="${parsedSets['sets'] == null || #lists.isEmpty(parsedSets['sets'])}"
+                     class="text-muted">No sets defined.</div>
+                <ul class="list-group list-group-flush">
+                    <li th:each="set : ${parsedSets['sets']}"
+                        class="list-group-item d-flex justify-content-between">
+                        <span th:text="${set['description']}"></span>
+                        <span class="text-muted" th:text="${set['reps'] + ' reps'}"></span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script th:inline="javascript">
+const workoutId = /*[[${workout.id}]]*/ 0;
+const workoutType = /*[[${workout.type.name()}]]*/ 'STRENGTH';
+
+// ---- Web Audio beeps ----
+var audioCtx = null;
+function getAudioCtx() {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    return audioCtx;
+}
+function beep(freq, durationMs, type, gainVal) {
+    try {
+        var ctx = getAudioCtx();
+        var osc = ctx.createOscillator();
+        var gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.type = type || 'sine';
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(gainVal || 0.6, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + durationMs / 1000);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + durationMs / 1000);
+    } catch(e) {}
+}
+// Short countdown tick: 880 Hz, 80 ms
+function beepTick()      { beep(880, 80,  'sine',   0.5); }
+// Phase-start GO beep: two quick high beeps
+function beepGo() {
+    beep(1047, 120, 'square', 0.7);
+    setTimeout(function() { beep(1319, 200, 'square', 0.7); }, 140);
+}
+// Phase-start REST beep: lower, softer
+function beepRest()      { beep(440,  300, 'sine',   0.5); }
+// Workout done: ascending arpeggio
+function beepDone() {
+    [523, 659, 784, 1047].forEach(function(f, i) {
+        setTimeout(function() { beep(f, 200, 'sine', 0.6); }, i * 160);
+    });
+}
+
+// ---- HIIT Timer ----
+(function() {
+    if (workoutType !== 'HIIT') return;
+
+    const warmupSecs = /*[[${parsedSets['warmupSecs'] ?: 0}]]*/ 300;
+    const cooldownSecs = /*[[${parsedSets['cooldownSecs'] ?: 0}]]*/ 300;
+    const numberOfSets = /*[[${parsedSets['numberOfSets'] ?: 1}]]*/ 8;
+    const highIntensitySecs = /*[[${parsedSets['sets'] != null ? parsedSets['sets'][0]['highIntensitySecs'] : 40}]]*/ 40;
+    const restSecs = /*[[${parsedSets['sets'] != null ? parsedSets['sets'][0]['restSecs'] : 20}]]*/ 20;
+
+    const phases = [];
+    if (warmupSecs > 0) phases.push({ label: 'Warmup', duration: warmupSecs, color: 'bg-info', sound: 'rest' });
+    for (let i = 1; i <= numberOfSets; i++) {
+        phases.push({ label: 'Set ' + i + ' — GO!', duration: highIntensitySecs, color: 'bg-danger', sound: 'go' });
+        if (i < numberOfSets) {
+            phases.push({ label: 'Set ' + i + ' — Rest', duration: restSecs, color: 'bg-warning', sound: 'rest' });
+        }
+    }
+    if (cooldownSecs > 0) phases.push({ label: 'Cooldown', duration: cooldownSecs, color: 'bg-success', sound: 'rest' });
+
+    let phaseIndex = 0;
+    let remaining = phases.length > 0 ? phases[0].duration : 0;
+    let running = false;
+    let interval = null;
+
+    const display   = document.getElementById('timer-display');
+    const phaseLabel = document.getElementById('phase-label');
+    const progressBar = document.getElementById('phase-progress-bar');
+    const infoLeft  = document.getElementById('phase-info-left');
+    const infoRight = document.getElementById('phase-info-right');
+    const btnStart  = document.getElementById('btn-start');
+    const btnPause  = document.getElementById('btn-pause');
+    const btnReset  = document.getElementById('btn-reset');
+
+    function fmt(secs) {
+        const m = Math.floor(secs / 60);
+        const s = secs % 60;
+        return String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+    }
+
+    function updateUI() {
+        if (phases.length === 0) { display.textContent = '00:00'; phaseLabel.textContent = 'No phases defined'; return; }
+        if (phaseIndex >= phases.length) {
+            display.textContent = '00:00';
+            phaseLabel.textContent = 'Done! 🎉';
+            progressBar.style.width = '100%';
+            return;
+        }
+        const phase = phases[phaseIndex];
+        display.textContent = fmt(remaining);
+        phaseLabel.textContent = phase.label;
+        const pct = ((phase.duration - remaining) / phase.duration) * 100;
+        progressBar.style.width = pct + '%';
+        progressBar.className = 'progress-bar ' + phase.color;
+        infoLeft.textContent  = 'Phase ' + (phaseIndex + 1) + ' / ' + phases.length;
+        infoRight.textContent = fmt(remaining) + ' left';
+    }
+
+    function playPhaseStartSound(phase) {
+        if (phase.sound === 'go')   beepGo();
+        else                        beepRest();
+    }
+
+    function tick() {
+        remaining--;
+
+        // Countdown beeps: 3, 2, 1 before phase ends
+        if (remaining > 0 && remaining <= 3) {
+            beepTick();
+        }
+
+        if (remaining <= 0) {
+            phaseIndex++;
+            if (phaseIndex >= phases.length) {
+                clearInterval(interval);
+                running = false;
+                btnStart.disabled = true;
+                btnPause.disabled = true;
+                beepDone();
+            } else {
+                remaining = phases[phaseIndex].duration;
+                playPhaseStartSound(phases[phaseIndex]);
+            }
+        }
+        updateUI();
+    }
+
+    btnStart.addEventListener('click', function() {
+        if (running) return;
+        if (phaseIndex >= phases.length) return;
+        // Unlock AudioContext on first user gesture
+        if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+        running = true;
+        interval = setInterval(tick, 1000);
+        btnStart.disabled = true;
+        btnPause.disabled = false;
+        playPhaseStartSound(phases[phaseIndex]);
+    });
+
+    btnPause.addEventListener('click', function() {
+        clearInterval(interval);
+        running = false;
+        btnStart.disabled = false;
+        btnPause.disabled = true;
+    });
+
+    btnReset.addEventListener('click', function() {
+        clearInterval(interval);
+        running = false;
+        phaseIndex = 0;
+        remaining = phases.length > 0 ? phases[0].duration : 0;
+        btnStart.disabled = false;
+        btnPause.disabled = true;
+        updateUI();
+    });
+
+    updateUI();
+})();
+// ---- Strength checkboxes (localStorage, per exercise + set) ----
+(function() {
+    if (workoutType !== 'STRENGTH') return;
+
+    const checkboxes = document.querySelectorAll('.strength-check');
+    const banner = document.getElementById('all-done-banner');
+
+    checkboxes.forEach(function(cb) {
+        // key: strength-{workoutId}-{exIndex}-{setNum}
+        const key = 'strength-' + workoutId + '-' + cb.dataset.ex + '-' + cb.dataset.set;
+        cb.checked = localStorage.getItem(key) === 'true';
+        styleCb(cb);
+        cb.addEventListener('change', function() {
+            localStorage.setItem(key, cb.checked);
+            styleCb(cb);
+            checkAllDone();
+        });
+    });
+
+    function styleCb(cb) {
+        const label = document.querySelector('label[for="' + cb.id + '"]');
+        if (label) {
+            label.style.textDecoration = cb.checked ? 'line-through' : '';
+            label.style.color = cb.checked ? '#6c757d' : '';
+        }
+    }
+
+    function checkAllDone() {
+        const allDone = checkboxes.length > 0 && Array.from(checkboxes).every(cb => cb.checked);
+        if (banner) banner.style.display = allDone ? 'block' : 'none';
+    }
+
+    checkAllDone();
+})();
+</script>
+</body>
+</html>

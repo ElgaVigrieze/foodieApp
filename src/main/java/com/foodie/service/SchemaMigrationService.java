@@ -28,11 +28,19 @@ public class SchemaMigrationService {
         // Add new columns
         addColumnIfNotExists("meal_plans", "frozen", "BOOLEAN DEFAULT FALSE");
         addColumnIfNotExists("meal_plan_entries", "prepared", "BOOLEAN DEFAULT FALSE");
+        addColumnIfNotExists("training_plan_entries", "completed", "BOOLEAN DEFAULT FALSE");
+
+        // Drop stale columns that were removed from entities
+        dropColumnIfExists("workouts", "completed");
+        dropColumnIfExists("workouts", "date");
+        addColumnIfNotExists("workouts", "estimated_kcal", "INTEGER");
+        addColumnIfNotExists("workouts", "actual_kcal", "INTEGER");
 
         // Update check constraints for new enum values (PostgreSQL only - H2 doesn't add these)
         if (isPostgres) {
             dropAndRecreateCheckConstraint("meals", "meals_category_check",
                     "category IN ('MAIN_COURSE','SOUP','SALAD','SNACK','DESSERT','DRINK','READY_MEAL')");
+            // No new enum constraints needed for fitness tables - they use VARCHAR
         }
     }
 
@@ -43,6 +51,15 @@ public class SchemaMigrationService {
             log.info("Ensured column {}.{} exists", table, column);
         } catch (Exception e) {
             log.warn("Could not add column {}.{}: {}", table, column, e.getMessage());
+        }
+    }
+
+    private void dropColumnIfExists(String table, String column) {
+        try {
+            jdbcTemplate.execute("ALTER TABLE " + table + " DROP COLUMN IF EXISTS " + column);
+            log.info("Dropped stale column {}.{}", table, column);
+        } catch (Exception e) {
+            log.warn("Could not drop column {}.{}: {}", table, column, e.getMessage());
         }
     }
 

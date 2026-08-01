@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Training Plan - Foodie')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: navbar}"></nav>
+
+<div class="container-fluid px-4">
+
+    <div th:if="${success}" class="alert alert-success alert-dismissible fade show" role="alert">
+        <span th:text="${success}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
+    <!-- Week navigation -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <a th:href="@{/fitness/plan(week=${prevWeek})}" class="btn btn-outline-secondary">
+            <i class="bi bi-chevron-left"></i> Prev Week
+        </a>
+        <div class="text-center">
+            <h4 class="mb-0">
+                <i class="bi bi-calendar-week"></i>
+                Week of <span th:text="${#temporals.format(weekStart, 'd MMM yyyy')}"></span>
+            </h4>
+            <small class="text-muted">
+                <a th:href="@{/fitness/workouts}" class="text-muted"><i class="bi bi-list-ul"></i> Workout Library</a>
+            </small>
+        </div>
+        <a th:href="@{/fitness/plan(week=${nextWeek})}" class="btn btn-outline-secondary">
+            Next Week <i class="bi bi-chevron-right"></i>
+        </a>
+    </div>
+
+    <!-- Weekly grid -->
+    <div class="card mb-3">
+        <div class="table-responsive">
+            <table class="table table-bordered table-sm mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th th:each="entry : ${weeklyPlan}"
+                            class="text-center py-2"
+                            th:classappend="${entry.key.equals(today)} ? 'bg-warning bg-opacity-25' : ''"
+                            style="width: 14.28%;">
+                            <div th:text="${#temporals.format(entry.key, 'EEE')}"></div>
+                            <div class="small fw-normal text-muted"
+                                 th:text="${#temporals.format(entry.key, 'd MMM')}"></div>
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td th:each="entry : ${weeklyPlan}"
+                            class="p-2 align-top plan-cell"
+                            th:classappend="${entry.key.equals(today)} ? 'bg-warning bg-opacity-10' : ''"
+                            th:data-date="${entry.key}"
+                            style="min-height: 120px; vertical-align: top; cursor: pointer;">
+
+                            <!-- Workout entries for this day -->
+                            <div th:each="planEntry : ${entry.value}"
+                                 class="mb-1 p-1 rounded d-flex align-items-center justify-content-between"
+                                 th:classappend="${planEntry.completed} ? 'bg-success bg-opacity-15' : 'bg-light'"
+                                 style="font-size: 0.8rem;">
+                                <div class="d-flex align-items-center gap-1 flex-grow-1 overflow-hidden">
+                                    <form th:action="@{/fitness/plan/toggle/{id}(id=${planEntry.id})}" method="post"
+                                          class="d-inline" onclick="event.stopPropagation();">
+                                        <input type="hidden" name="weekStart" th:value="${weekStart}">
+                                        <button type="submit" class="btn btn-sm p-0 border-0">
+                                            <i th:class="${planEntry.completed} ? 'bi bi-check-circle-fill text-success' : 'bi bi-circle text-muted'"></i>
+                                        </button>
+                                    </form>
+                                    <span class="badge badge-sm"
+                                          th:classappend="${planEntry.workout.type.name() == 'RUNNING' ? 'bg-primary' :
+                                                           planEntry.workout.type.name() == 'WALKING' ? 'bg-info text-dark' :
+                                                           planEntry.workout.type.name() == 'HIIT' ? 'bg-warning text-dark' :
+                                                           planEntry.workout.type.name() == 'STRENGTH' ? 'bg-danger' :
+                                                           planEntry.workout.type.name() == 'PILATES' ? 'bg-secondary' :
+                                                           planEntry.workout.type.name() == 'PLYO' ? 'bg-success' : 'bg-dark'}"
+                                          th:text="${planEntry.workout.type.label}"></span>
+                                    <a th:href="@{/fitness/workouts/{id}(id=${planEntry.workout.id})}"
+                                       class="text-decoration-none text-dark text-truncate"
+                                       th:classappend="${planEntry.completed} ? 'text-decoration-line-through text-muted' : ''"
+                                       th:text="${planEntry.workout.name}"
+                                       onclick="event.stopPropagation();"></a>
+                                </div>
+                                <form th:action="@{/fitness/plan/remove/{id}(id=${planEntry.id})}" method="post"
+                                      class="d-inline ms-1" onclick="event.stopPropagation();">
+                                    <input type="hidden" name="weekStart" th:value="${weekStart}">
+                                    <button type="submit" class="btn btn-sm p-0 border-0 text-danger" style="font-size: 0.65rem;">
+                                        <i class="bi bi-x"></i>
+                                    </button>
+                                </form>
+                            </div>
+
+                            <div th:if="${entry.value.isEmpty()}" class="text-muted small text-center pt-2">
+                                <i class="bi bi-plus-circle"></i>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="card-footer small text-muted">
+            <i class="bi bi-info-circle"></i> Click a day to pre-fill date below. Tick the circle to mark a workout done.
+        </div>
+    </div>
+
+    <!-- Add to plan form -->
+    <div class="card" id="add-form-card">
+        <div class="card-header"><strong><i class="bi bi-plus-circle"></i> Add Workout to Plan</strong></div>
+        <div class="card-body">
+            <form th:action="@{/fitness/plan/assign}" method="post" class="row g-2 align-items-end">
+                <input type="hidden" name="weekStart" th:value="${weekStart}">
+                <div class="col-md-5">
+                    <label class="form-label small">Workout</label>
+                    <select name="workoutId" class="form-select form-select-sm" required>
+                        <option value="">-- Select Workout --</option>
+                        <option th:each="w : ${allWorkouts}"
+                                th:value="${w.id}"
+                                th:text="${w.type.label + ' - ' + w.name}"></option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small">Day</label>
+                    <input type="date" name="date" id="plan-date" class="form-control form-control-sm"
+                           th:value="${#temporals.format(today, 'yyyy-MM-dd')}" required>
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-success btn-sm w-100">
+                        <i class="bi bi-plus-lg"></i> Add
+                    </button>
+                </div>
+                <div class="col-md-2">
+                    <a th:href="@{/fitness/workouts/new}" class="btn btn-outline-secondary btn-sm w-100">
+                        <i class="bi bi-plus-lg"></i> New Workout
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+document.querySelectorAll('.plan-cell').forEach(function(cell) {
+    cell.addEventListener('click', function(e) {
+        if (e.target.closest('form') || e.target.closest('a')) return;
+        var date = cell.dataset.date;
+        document.getElementById('plan-date').value = date;
+        document.getElementById('add-form-card').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
+});
+</script>
+</body>
+</html>

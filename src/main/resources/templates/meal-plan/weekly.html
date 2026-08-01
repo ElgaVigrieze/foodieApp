@@ -33,9 +33,16 @@
                 </button>
             </form>
         </div>
-        <a th:href="@{/meal-plan(week=${nextWeek})}" class="btn btn-outline-secondary">
-            Next Week <i class="bi bi-chevron-right"></i>
-        </a>
+        <div class="d-flex flex-column align-items-end gap-1">
+            <a th:href="@{/meal-plan(week=${nextWeek})}" class="btn btn-outline-secondary">
+                Next Week <i class="bi bi-chevron-right"></i>
+            </a>
+            <a th:href="@{/meal-plan}"
+               th:if="${weekStart != currentWeekStart}"
+               class="btn btn-sm btn-outline-success">
+                <i class="bi bi-calendar-check"></i> This Week
+            </a>
+        </div>
     </div>
 
     <div class="row">

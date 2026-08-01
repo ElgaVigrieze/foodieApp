@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Workout Form - Foodie')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: navbar}"></nav>
+
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-lg-9">
+
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0"
+                        th:text="${isEdit ? 'Edit Workout' : 'New Workout'}">
+                    </h4>
+                    <a th:href="@{/fitness/workouts}" class="btn btn-sm btn-outline-secondary">
+                        <i class="bi bi-arrow-left"></i> Back
+                    </a>
+                </div>
+                <div class="card-body">
+                    <form th:action="@{/fitness/workouts/save}" method="post" id="workout-form">
+                        <input type="hidden" name="id" th:value="${workout.id}">
+
+                        <!-- Common fields -->
+                        <div class="row mb-3">
+                            <div class="col-md-5">
+                                <label class="form-label">Name *</label>
+                                <input type="text" name="name" class="form-control"
+                                       th:value="${workout.name}" required placeholder="e.g. Morning Run">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Type *</label>
+                                <select name="type" id="type-select" class="form-select"
+                                        th:disabled="${isEdit}" onchange="showSection(this.value)">
+                                    <option th:each="wt : ${workoutTypes}"
+                                            th:value="${wt.name()}"
+                                            th:text="${wt.label}"
+                                            th:selected="${workout.type == wt}"></option>
+                                </select>
+                                <!-- Hidden field to carry value when disabled -->
+                                <input type="hidden" name="type" th:if="${isEdit}" th:value="${workout.type.name()}">
+                            </div></div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Notes</label>
+                                <textarea name="notes" class="form-control" rows="2"
+                                          placeholder="Optional notes..."
+                                          th:text="${workout.notes}"></textarea>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">YouTube URL</label>
+                                <input type="url" name="youtubeUrl" class="form-control"
+                                       th:value="${workout.youtubeUrl}"
+                                       placeholder="https://youtube.com/watch?v=...">
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">Total min</label>
+                                <input type="number" name="totalMinutes" class="form-control"
+                                       th:value="${workout.totalMinutes}" min="1" placeholder="45">
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">Est. kcal</label>
+                                <input type="number" name="estimatedKcal" class="form-control"
+                                       th:value="${workout.estimatedKcal}" min="0" placeholder="300">
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">Actual kcal</label>
+                                <input type="number" name="actualKcal" class="form-control"
+                                       th:value="${workout.actualKcal}" min="0" placeholder="—">
+                            </div>
+                        </div>
+
+                        <hr>
+
+                        <!-- RUNNING section -->
+                        <div id="section-RUNNING" class="type-section">
+                            <h5 class="mb-3"><i class="bi bi-person-walking"></i> Running Details</h5>
+                            <div class="row mb-3">
+                                <div class="col-md-4">
+                                    <label class="form-label">Tempo</label>
+                                    <input type="text" name="runningTempo" class="form-control"
+                                           th:value="${parsedSets['tempo']}"
+                                           placeholder="easy / tempo / interval">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Distance (km)</label>
+                                    <input type="number" name="runningDistanceKm" class="form-control"
+                                           step="0.1" min="0"
+                                           th:value="${parsedSets['distanceKm']}"
+                                           placeholder="5.0">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Est. kcal</label>
+                                    <input type="number" name="runningEstimatedKcal" class="form-control"
+                                           th:value="${parsedSets['estimatedKcal']}"
+                                           placeholder="400">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- HIIT section -->
+                        <div id="section-HIIT" class="type-section" style="display:none">
+                            <h5 class="mb-3"><i class="bi bi-lightning-charge"></i> HIIT Details</h5>
+                            <div class="row mb-3">
+                                <div class="col-md-4">
+                                    <label class="form-label">HIIT Type</label>
+                                    <select name="hiitType" class="form-select">
+                                        <option value="RUNNING" th:selected="${parsedSets['hiitType'] == 'RUNNING'}">Running</option>
+                                        <option value="CARDIO" th:selected="${parsedSets['hiitType'] == 'CARDIO'}">Cardio</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Warmup (secs)</label>
+                                    <input type="number" name="hiitWarmupSecs" class="form-control"
+                                           th:value="${parsedSets['warmupSecs'] ?: 300}" min="0">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Cooldown (secs)</label>
+                                    <input type="number" name="hiitCooldownSecs" class="form-control"
+                                           th:value="${parsedSets['cooldownSecs'] ?: 300}" min="0">
+                                </div>
+                            </div>
+                            <div class="row mb-3">
+                                <div class="col-md-4">
+                                    <label class="form-label">Number of Sets</label>
+                                    <input type="number" name="hiitNumberOfSets" class="form-control"
+                                           th:value="${parsedSets['numberOfSets'] ?: 8}" min="1">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">High Intensity (secs/set)</label>
+                                    <input type="number" name="hiitHighIntensitySecs" class="form-control"
+                                           th:value="${parsedSets['sets'] != null ? parsedSets['sets'][0]['highIntensitySecs'] : 40}" min="1">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Rest (secs/set)</label>
+                                    <input type="number" name="hiitRestSecs" class="form-control"
+                                           th:value="${parsedSets['sets'] != null ? parsedSets['sets'][0]['restSecs'] : 20}" min="0">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- STRENGTH section -->
+                        <div id="section-STRENGTH" class="type-section" style="display:none">
+                            <h5 class="mb-3"><i class="bi bi-activity"></i> Strength Sets</h5>
+                            <div class="row mb-1 text-muted small px-1">
+                <div class="col-md-4">Exercise</div>
+                <div class="col-md-2">Reps</div>
+                <div class="col-md-2">Sets</div>
+                <div class="col-md-2">Weight</div>
+                <div class="col-md-2"></div>
+            </div>
+            <div id="strength-sets-container">
+                                <!-- Existing sets (edit mode) -->
+                                <th:block th:if="${parsedSets['sets'] != null}">
+                                    <div th:each="set, stat : ${parsedSets['sets']}" class="row mb-2 strength-row">
+                                        <div class="col-md-4">
+                                            <select th:name="'strengthExercise'" class="form-select">
+                                                <option value="">-- Exercise --</option>
+                                                <option th:each="ex : ${ {'RDL','SINGLE_LEG_RDL','ROW','BENCH_PRESS','LUNGE','BULGARIAN_SPLIT_SQUAT','PUSHUP','HANG','FARMERS_CARRY'} }"
+                                                        th:value="${ex}" th:text="${ex}"
+                                                        th:selected="${set['exercise'] == ex}"></option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <input type="number" name="strengthReps" class="form-control"
+                                                   th:value="${set['reps']}" min="1" placeholder="Reps">
+                                        </div>
+                                        <div class="col-md-2">
+                                            <input type="number" name="strengthNumSets" class="form-control"
+                                                   th:value="${set['numSets'] ?: 3}" min="1" placeholder="Sets">
+                                        </div>
+                                        <div class="col-md-2">
+                                            <div class="input-group input-group-sm">
+                                                <input type="number" name="strengthWeightKg" class="form-control"
+                                                       th:value="${set['weightKg']}" min="0" step="0.5" placeholder="kg">
+                                                <span class="input-group-text">kg</span>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <button type="button" class="btn btn-outline-danger btn-remove-strength">
+                                                <i class="bi bi-x-lg"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </th:block>
+                                <!-- Default empty row for new workout -->
+                                <div th:if="${parsedSets['sets'] == null}" class="row mb-2 strength-row">
+                                    <div class="col-md-4">
+                                        <select name="strengthExercise" class="form-select">
+                                            <option value="">-- Exercise --</option>
+                                            <option th:each="ex : ${ {'RDL','SINGLE_LEG_RDL','ROW','BENCH_PRESS','LUNGE','BULGARIAN_SPLIT_SQUAT','PUSHUP','HANG','FARMERS_CARRY'} }"
+                                                    th:value="${ex}" th:text="${ex}"></option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <input type="number" name="strengthReps" class="form-control"
+                                               min="1" placeholder="Reps">
+                                    </div>
+                                    <div class="col-md-2">
+                                        <input type="number" name="strengthNumSets" class="form-control"
+                                               min="1" value="3" placeholder="Sets">
+                                    </div>
+                                    <div class="col-md-2">
+                                        <div class="input-group input-group-sm">
+                                            <input type="number" name="strengthWeightKg" class="form-control"
+                                                   min="0" step="0.5" placeholder="kg">
+                                            <span class="input-group-text">kg</span>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <button type="button" class="btn btn-outline-danger btn-remove-strength">
+                                            <i class="bi bi-x-lg"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            <button type="button" id="btn-add-strength" class="btn btn-sm btn-outline-success mb-2">
+                                <i class="bi bi-plus-lg"></i> Add Exercise
+                            </button>
+                        </div>
+
+                        <!-- PLYO section -->
+                        <div id="section-PLYO" class="type-section" style="display:none">
+                            <h5 class="mb-3"><i class="bi bi-lightning"></i> Plyo Sets</h5>
+                            <div id="plyo-sets-container">
+                                <th:block th:if="${parsedSets['sets'] != null}">
+                                    <div th:each="set : ${parsedSets['sets']}" class="row mb-2 plyo-row">
+                                        <div class="col-md-6">
+                                            <select name="plyoJumpType" class="form-select">
+                                                <option value="">-- Jump Type --</option>
+                                                <option th:each="jt : ${ {'POGO','SINGLE_LEG_LATERAL','SINGLE_LEG_FRONTAL','LATERAL','FRONTAL','BACKWARDS'} }"
+                                                        th:value="${jt}" th:text="${jt}"
+                                                        th:selected="${set['jumpType'] == jt}"></option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <input type="number" name="plyoReps" class="form-control"
+                                                   th:value="${set['reps']}" min="1" placeholder="Reps">
+                                        </div>
+                                        <div class="col-md-2">
+                                            <button type="button" class="btn btn-outline-danger btn-remove-plyo">
+                                                <i class="bi bi-x-lg"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </th:block>
+                                <div th:if="${parsedSets['sets'] == null}" class="row mb-2 plyo-row">
+                                    <div class="col-md-6">
+                                        <select name="plyoJumpType" class="form-select">
+                                            <option value="">-- Jump Type --</option>
+                                            <option th:each="jt : ${ {'POGO','SINGLE_LEG_LATERAL','SINGLE_LEG_FRONTAL','LATERAL','FRONTAL','BACKWARDS'} }"
+                                                    th:value="${jt}" th:text="${jt}"></option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <input type="number" name="plyoReps" class="form-control"
+                                               min="1" placeholder="Reps">
+                                    </div>
+                                    <div class="col-md-2">
+                                        <button type="button" class="btn btn-outline-danger btn-remove-plyo">
+                                            <i class="bi bi-x-lg"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            <button type="button" id="btn-add-plyo" class="btn btn-sm btn-outline-success mb-2">
+                                <i class="bi bi-plus-lg"></i> Add Set
+                            </button>
+                        </div>
+
+                        <!-- PILATES / REHAB section -->
+                        <div id="section-PILATES" class="type-section" style="display:none">
+                            <h5 class="mb-3"><i class="bi bi-heart-pulse"></i> Sets</h5>
+                            <div id="generic-sets-container">
+                                <th:block th:if="${parsedSets['sets'] != null}">
+                                    <div th:each="set : ${parsedSets['sets']}" class="row mb-2 generic-row">
+                                        <div class="col-md-6">
+                                            <input type="text" name="genericDescription" class="form-control"
+                                                   th:value="${set['description']}" placeholder="Description">
+                                        </div>
+                                        <div class="col-md-4">
+                                            <input type="number" name="genericReps" class="form-control"
+                                                   th:value="${set['reps']}" min="1" placeholder="Reps">
+                                        </div>
+                                        <div class="col-md-2">
+                                            <button type="button" class="btn btn-outline-danger btn-remove-generic">
+                                                <i class="bi bi-x-lg"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </th:block>
+                                <div th:if="${parsedSets['sets'] == null}" class="row mb-2 generic-row">
+                                    <div class="col-md-6">
+                                        <input type="text" name="genericDescription" class="form-control"
+                                               placeholder="Description">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <input type="number" name="genericReps" class="form-control"
+                                               min="1" placeholder="Reps">
+                                    </div>
+                                    <div class="col-md-2">
+                                        <button type="button" class="btn btn-outline-danger btn-remove-generic">
+                                            <i class="bi bi-x-lg"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            <button type="button" id="btn-add-generic" class="btn btn-sm btn-outline-success mb-2">
+                                <i class="bi bi-plus-lg"></i> Add Set
+                            </button>
+                        </div>
+
+                        <!-- REHAB section (same UI as PILATES) -->
+                        <div id="section-REHAB" class="type-section" style="display:none">
+                            <h5 class="mb-3"><i class="bi bi-bandaid"></i> Rehab Sets</h5>
+                            <div id="rehab-sets-container">
+                                <th:block th:if="${parsedSets['sets'] != null}">
+                                    <div th:each="set : ${parsedSets['sets']}" class="row mb-2 rehab-row">
+                                        <div class="col-md-6">
+                                            <input type="text" name="genericDescription" class="form-control"
+                                                   th:value="${set['description']}" placeholder="Description">
+                                        </div>
+                                        <div class="col-md-4">
+                                            <input type="number" name="genericReps" class="form-control"
+                                                   th:value="${set['reps']}" min="1" placeholder="Reps">
+                                        </div>
+                                        <div class="col-md-2">
+                                            <button type="button" class="btn btn-outline-danger btn-remove-rehab">
+                                                <i class="bi bi-x-lg"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </th:block>
+                                <div th:if="${parsedSets['sets'] == null}" class="row mb-2 rehab-row">
+                                    <div class="col-md-6">
+                                        <input type="text" name="genericDescription" class="form-control"
+                                               placeholder="Description">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <input type="number" name="genericReps" class="form-control"
+                                               min="1" placeholder="Reps">
+                                    </div>
+                                    <div class="col-md-2">
+                                        <button type="button" class="btn btn-outline-danger btn-remove-rehab">
+                                            <i class="bi bi-x-lg"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            <button type="button" id="btn-add-rehab" class="btn btn-sm btn-outline-success mb-2">
+                                <i class="bi bi-plus-lg"></i> Add Set
+                            </button>
+                        </div>
+
+                        <hr>
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-success">
+                                <i class="bi bi-check-lg"></i> Save Workout
+                            </button>
+                            <a th:href="@{/fitness/workouts}" class="btn btn-outline-secondary">Cancel</a>
+                        </div>
+
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script th:inline="javascript">
+    const currentType = /*[[${workout.type.name()}]]*/ 'STRENGTH';
+
+    function showSection(type) {
+        document.querySelectorAll('.type-section').forEach(function(el) {
+            el.style.display = 'none';
+        });
+        // WALKING reuses the RUNNING section
+        let sectionId = 'section-' + (type === 'WALKING' ? 'RUNNING' : type);
+        const section = document.getElementById(sectionId);
+        if (section) section.style.display = 'block';
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        showSection(currentType);
+
+        // ---- Dynamic row builders ----
+        function makeAddRowHandler(containerId, rowClass, removeClass, rowTemplate) {
+            const btn = document.querySelector('#' + containerId).closest('.type-section').querySelector('[id^="btn-add"]');
+            if (!btn) return;
+            btn.addEventListener('click', function() {
+                const container = document.getElementById(containerId);
+                const newRow = rowTemplate();
+                container.appendChild(newRow);
+                newRow.querySelector('.' + removeClass).addEventListener('click', function() {
+                    newRow.remove();
+                });
+            });
+            // attach remove to existing rows
+            document.querySelectorAll('.' + removeClass).forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    btn.closest('.' + rowClass).remove();
+                });
+            });
+        }
+
+        // Strength add button
+        document.getElementById('btn-add-strength').addEventListener('click', function() {
+            const container = document.getElementById('strength-sets-container');
+            const row = document.createElement('div');
+            row.className = 'row mb-2 strength-row';
+            row.innerHTML = `
+                <div class="col-md-4">
+                    <select name="strengthExercise" class="form-select">
+                        <option value="">-- Exercise --</option>
+                        <option value="RDL">RDL</option>
+                        <option value="SINGLE_LEG_RDL">SINGLE_LEG_RDL</option>
+                        <option value="ROW">ROW</option>
+                        <option value="BENCH_PRESS">BENCH_PRESS</option>
+                        <option value="LUNGE">LUNGE</option>
+                        <option value="BULGARIAN_SPLIT_SQUAT">BULGARIAN_SPLIT_SQUAT</option>
+                        <option value="PUSHUP">PUSHUP</option>
+                        <option value="HANG">HANG</option>
+                        <option value="FARMERS_CARRY">FARMERS_CARRY</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <input type="number" name="strengthReps" class="form-control" min="1" placeholder="Reps">
+                </div>
+                <div class="col-md-2">
+                    <input type="number" name="strengthNumSets" class="form-control" min="1" value="3" placeholder="Sets">
+                </div>
+                <div class="col-md-2">
+                    <div class="input-group input-group-sm">
+                        <input type="number" name="strengthWeightKg" class="form-control" min="0" step="0.5" placeholder="kg">
+                        <span class="input-group-text">kg</span>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <button type="button" class="btn btn-outline-danger btn-remove-strength"><i class="bi bi-x-lg"></i></button>
+                </div>`;
+            container.appendChild(row);
+            row.querySelector('.btn-remove-strength').addEventListener('click', function() { row.remove(); });
+        });
+        document.querySelectorAll('.btn-remove-strength').forEach(function(btn) {
+            btn.addEventListener('click', function() { btn.closest('.strength-row').remove(); });
+        });
+
+        // Plyo add button
+        document.getElementById('btn-add-plyo').addEventListener('click', function() {
+            const container = document.getElementById('plyo-sets-container');
+            const row = document.createElement('div');
+            row.className = 'row mb-2 plyo-row';
+            row.innerHTML = `
+                <div class="col-md-6">
+                    <select name="plyoJumpType" class="form-select">
+                        <option value="">-- Jump Type --</option>
+                        <option value="POGO">POGO</option>
+                        <option value="SINGLE_LEG_LATERAL">SINGLE_LEG_LATERAL</option>
+                        <option value="SINGLE_LEG_FRONTAL">SINGLE_LEG_FRONTAL</option>
+                        <option value="LATERAL">LATERAL</option>
+                        <option value="FRONTAL">FRONTAL</option>
+                        <option value="BACKWARDS">BACKWARDS</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <input type="number" name="plyoReps" class="form-control" min="1" placeholder="Reps">
+                </div>
+                <div class="col-md-2">
+                    <button type="button" class="btn btn-outline-danger btn-remove-plyo"><i class="bi bi-x-lg"></i></button>
+                </div>`;
+            container.appendChild(row);
+            row.querySelector('.btn-remove-plyo').addEventListener('click', function() { row.remove(); });
+        });
+        document.querySelectorAll('.btn-remove-plyo').forEach(function(btn) {
+            btn.addEventListener('click', function() { btn.closest('.plyo-row').remove(); });
+        });
+
+        // Generic (Pilates) add button
+        document.getElementById('btn-add-generic').addEventListener('click', function() {
+            const container = document.getElementById('generic-sets-container');
+            const row = document.createElement('div');
+            row.className = 'row mb-2 generic-row';
+            row.innerHTML = `
+                <div class="col-md-6">
+                    <input type="text" name="genericDescription" class="form-control" placeholder="Description">
+                </div>
+                <div class="col-md-4">
+                    <input type="number" name="genericReps" class="form-control" min="1" placeholder="Reps">
+                </div>
+                <div class="col-md-2">
+                    <button type="button" class="btn btn-outline-danger btn-remove-generic"><i class="bi bi-x-lg"></i></button>
+                </div>`;
+            container.appendChild(row);
+            row.querySelector('.btn-remove-generic').addEventListener('click', function() { row.remove(); });
+        });
+        document.querySelectorAll('.btn-remove-generic').forEach(function(btn) {
+            btn.addEventListener('click', function() { btn.closest('.generic-row').remove(); });
+        });
+
+        // Rehab add button
+        document.getElementById('btn-add-rehab').addEventListener('click', function() {
+            const container = document.getElementById('rehab-sets-container');
+            const row = document.createElement('div');
+            row.className = 'row mb-2 rehab-row';
+            row.innerHTML = `
+                <div class="col-md-6">
+                    <input type="text" name="genericDescription" class="form-control" placeholder="Description">
+                </div>
+                <div class="col-md-4">
+                    <input type="number" name="genericReps" class="form-control" min="1" placeholder="Reps">
+                </div>
+                <div class="col-md-2">
+                    <button type="button" class="btn btn-outline-danger btn-remove-rehab"><i class="bi bi-x-lg"></i></button>
+                </div>`;
+            container.appendChild(row);
+            row.querySelector('.btn-remove-rehab').addEventListener('click', function() { row.remove(); });
+        });
+        document.querySelectorAll('.btn-remove-rehab').forEach(function(btn) {
+            btn.addEventListener('click', function() { btn.closest('.rehab-row').remove(); });
+        });
+    });
+</script>
+</body>
+</html>

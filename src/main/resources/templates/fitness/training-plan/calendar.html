@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Training Plan - Foodie')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: navbar}"></nav>
+
+<div class="container-fluid px-3">
+
+    <!-- Header + month nav -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2><i class="bi bi-calendar3"></i> Training Plan</h2>
+        <div class="d-flex gap-2 align-items-center">
+            <a th:href="@{/fitness/plan(month=${prevMonth})}" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-chevron-left"></i>
+            </a>
+            <span class="fw-semibold fs-5"
+                  th:text="${#temporals.format(currentMonth.atDay(1), 'MMMM yyyy')}"></span>
+            <a th:href="@{/fitness/plan(month=${nextMonth})}" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-chevron-right"></i>
+            </a>
+            <a th:href="@{/fitness/workouts}" class="btn btn-outline-success btn-sm ms-3">
+                <i class="bi bi-list-ul"></i> All Workouts
+            </a>
+        </div>
+    </div>
+
+    <!-- Calendar grid -->
+    <div class="table-responsive">
+        <table class="table table-bordered calendar-table mb-3" id="calendar-table">
+            <thead class="table-light">
+            <tr>
+                <th class="text-center">Mon</th>
+                <th class="text-center">Tue</th>
+                <th class="text-center">Wed</th>
+                <th class="text-center">Thu</th>
+                <th class="text-center">Fri</th>
+                <th class="text-center">Sat</th>
+                <th class="text-center">Sun</th>
+            </tr>
+            </thead>
+            <tbody id="calendar-body">
+            <!-- Filled by JS below -->
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Quick Add form -->
+    <div class="card mb-4" id="quick-add-card">
+        <div class="card-header">
+            <h6 class="mb-0"><i class="bi bi-plus-circle"></i> Quick Add to Training Plan</h6>
+        </div>
+        <div class="card-body">
+            <form th:action="@{/fitness/plan/assign}" method="post" class="row g-3 align-items-end">
+                <input type="hidden" name="month" th:value="${currentMonth}">
+                <div class="col-md-5">
+                    <label class="form-label">Workout</label>
+                    <select name="workoutId" class="form-select" required>
+                        <option value="">-- Select Workout --</option>
+                        <option th:each="w : ${allWorkouts}"
+                                th:value="${w.id}"
+                                th:text="${w.type.label + ' — ' + w.name}"></option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Date</label>
+                    <input type="date" name="date" id="quick-add-date" class="form-control" required
+                           th:value="${#temporals.format(today, 'yyyy-MM-dd')}">
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-success w-100">
+                        <i class="bi bi-plus-lg"></i> Assign
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+</div>
+
+<style>
+.calendar-table td {
+    min-height: 100px;
+    vertical-align: top;
+    padding: 4px;
+    cursor: pointer;
+    width: 14.28%;
+}
+.calendar-table td.today {
+    background-color: #fff3cd;
+}
+.calendar-table td.other-month {
+    background-color: #f8f9fa;
+    opacity: 0.6;
+}
+.calendar-table td:hover {
+    background-color: #e9f5e9;
+}
+.day-number {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #666;
+    margin-bottom: 2px;
+}
+.workout-badge {
+    display: block;
+    font-size: 0.7rem;
+    padding: 1px 5px;
+    border-radius: 3px;
+    margin-bottom: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+    text-decoration: none;
+    color: inherit;
+}
+</style>
+
+<script th:inline="javascript">
+const planMap = /*[[${planMap}]]*/ {};
+const currentMonthStr = /*[[${currentMonth}]]*/ '';
+const todayStr = /*[[${#temporals.format(today, 'yyyy-MM-dd')}]]*/ '';
+
+// Parse planMap: keys are LocalDate (yyyy-MM-dd strings from Thymeleaf toString)
+// Build a JS object: { 'yyyy-MM-dd': [{id, name, type, completed}, ...] }
+function buildCalendar() {
+    const [year, month] = currentMonthStr.split('-').map(Number);
+    const firstDay = new Date(year, month - 1, 1);
+    const lastDay = new Date(year, month, 0);
+
+    // Start from Monday of the week containing firstDay
+    let startDow = firstDay.getDay(); // 0=Sun
+    startDow = startDow === 0 ? 6 : startDow - 1; // convert to Mon=0
+    const gridStart = new Date(firstDay);
+    gridStart.setDate(gridStart.getDate() - startDow);
+
+    // End on Sunday of the week containing lastDay
+    let endDow = lastDay.getDay();
+    endDow = endDow === 0 ? 0 : 7 - endDow;
+    const gridEnd = new Date(lastDay);
+    gridEnd.setDate(gridEnd.getDate() + endDow);
+
+    const tbody = document.getElementById('calendar-body');
+    tbody.innerHTML = '';
+
+    let d = new Date(gridStart);
+    while (d <= gridEnd) {
+        const tr = document.createElement('tr');
+        for (let col = 0; col < 7; col++) {
+            const td = document.createElement('td');
+            const dateStr = fmtDate(d);
+            td.dataset.date = dateStr;
+
+            if (dateStr === todayStr) td.classList.add('today');
+            if (d.getMonth() + 1 !== month) td.classList.add('other-month');
+
+            // Day number
+            const dayNum = document.createElement('div');
+            dayNum.className = 'day-number';
+            dayNum.textContent = d.getDate();
+            td.appendChild(dayNum);
+
+            // Workout badges
+            if (planMap[dateStr]) {
+                planMap[dateStr].forEach(function(w) {
+                    const a = document.createElement('a');
+                    a.className = 'workout-badge ' + typeBadgeClass(w.type);
+                    a.href = '/fitness/workouts/' + w.id;
+                    a.textContent = w.name;
+                    a.title = w.type + ': ' + w.name;
+                    a.onclick = function(e) { e.stopPropagation(); };
+                    td.appendChild(a);
+                });
+            }
+
+            // Click to pre-fill quick add date
+            td.addEventListener('click', function() {
+                document.getElementById('quick-add-date').value = dateStr;
+                document.getElementById('quick-add-card').scrollIntoView({ behavior: 'smooth' });
+            });
+
+            tr.appendChild(td);
+            d.setDate(d.getDate() + 1);
+        }
+        tbody.appendChild(tr);
+    }
+}
+
+function fmtDate(d) {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return y + '-' + m + '-' + day;
+}
+
+function typeBadgeClass(type) {
+    switch (type) {
+        case 'RUNNING': return 'bg-info text-dark';
+        case 'HIIT': return 'bg-warning text-dark';
+        case 'STRENGTH': return 'bg-primary text-white';
+        case 'PILATES': return 'bg-danger text-white';
+        case 'PLYO': return 'bg-success text-white';
+        case 'REHAB': return 'bg-secondary text-white';
+        default: return 'bg-light text-dark';
+    }
+}
+
+document.addEventListener('DOMContentLoaded', buildCalendar);
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

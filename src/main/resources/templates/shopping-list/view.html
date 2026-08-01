@@ -23,10 +23,17 @@
         <a th:href="@{/shopping-list(week=${prevWeek})}" class="btn btn-outline-secondary btn-sm">
             <i class="bi bi-chevron-left"></i>
         </a>
-        <h5 class="mb-0">
-            <i class="bi bi-cart"></i>
-            <span th:text="${#temporals.format(weekStart, 'd MMM')}"></span>
-        </h5>
+        <div class="text-center">
+            <h5 class="mb-0">
+                <i class="bi bi-cart"></i>
+                Week of <span th:text="${#temporals.format(weekStart, 'd MMM yyyy')}"></span>
+            </h5>
+            <a th:href="@{/shopping-list}"
+               th:if="${weekStart != currentWeekStart}"
+               class="btn btn-sm btn-outline-success mt-1">
+                <i class="bi bi-calendar-check"></i> This Week
+            </a>
+        </div>
         <a th:href="@{/shopping-list(week=${nextWeek})}" class="btn btn-outline-secondary btn-sm">
             <i class="bi bi-chevron-right"></i>
         </a>

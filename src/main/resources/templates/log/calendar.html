@@ -102,9 +102,9 @@
                                     <!-- Calories -->
                                     <div th:if="${currentUser != null and currentUser.targetCalories != null}"
                                          class="cal-metric-row">
-                                        <span class="cal-metric-label">kcal</span>
-                                        <span th:text="${#numbers.formatDecimal(s.calories(), 1, 0)}"
-                                              th:classappend="${s.calories().compareTo(currentUser.targetCalories) < 0} ? 'met' : 'miss'"></span>
+                                        <span class="cal-metric-label">net kcal</span>
+                                        <span th:text="${#numbers.formatDecimal(s.netCalories(), 1, 0)}"
+                                              th:classappend="${s.netCalories().compareTo(currentUser.targetCalories) < 0} ? 'met' : 'miss'"></span>
                                     </div>
                                     <div th:if="${currentUser == null or currentUser.targetCalories == null}" class="cal-metric-row">
                                         <span class="cal-metric-label">kcal</span>

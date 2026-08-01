@@ -154,14 +154,14 @@ public class FoodLogService {
     ) {}
 
     public record DayStatus(boolean hasEntries, Boolean allTargetsMet,
-                             BigDecimal calories, BigDecimal protein, BigDecimal carbs,
+                             BigDecimal calories, BigDecimal netCalories, BigDecimal protein, BigDecimal carbs,
                              BigDecimal fat, BigDecimal fiber, BigDecimal cost) {}
 
     /** Convenience constructor for days with no entries. */
     private static DayStatus noEntries() {
         return new DayStatus(false, null,
                 BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
-                BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO);
+                BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO);
     }
 
     /**
@@ -205,7 +205,7 @@ public class FoodLogService {
             // Compute totals for the day
             BigDecimal cal = BigDecimal.ZERO, pro = BigDecimal.ZERO;
             BigDecimal carb = BigDecimal.ZERO, fat = BigDecimal.ZERO, fib = BigDecimal.ZERO;
-            BigDecimal cost = BigDecimal.ZERO;
+            BigDecimal cost = BigDecimal.ZERO, burned = BigDecimal.ZERO;
             for (FoodLog e : dayEntries) {
                 cal = cal.add(e.getCalories());
                 pro = pro.add(e.getProtein());
@@ -213,22 +213,24 @@ public class FoodLogService {
                 fat = fat.add(e.getFat());
                 fib = fib.add(e.getFiber());
                 cost = cost.add(e.getCost());
+                if (e.getCaloriesSpent() != null) burned = burned.add(e.getCaloriesSpent());
             }
+            BigDecimal netCal = cal.subtract(burned);
 
             if (!hasAnyTarget) {
-                result.put(day, new DayStatus(true, null, cal, pro, carb, fat, fib, cost));
+                result.put(day, new DayStatus(true, null, cal, netCal, pro, carb, fat, fib, cost));
                 continue;
             }
 
             boolean allMet = true;
-            if (user.getTargetCalories() != null) allMet &= cal.compareTo(user.getTargetCalories()) < 0;
+            if (user.getTargetCalories() != null) allMet &= netCal.compareTo(user.getTargetCalories()) < 0;
             if (user.getTargetFiber() != null)    allMet &= fib.compareTo(user.getTargetFiber()) >= 0;
             if (user.getTargetCarbs() != null)    allMet &= carb.compareTo(user.getTargetCarbs()) < 0;
             if (user.getTargetFat() != null)      allMet &= fat.compareTo(user.getTargetFat()) >= 0;
             if (user.getTargetProtein() != null)  allMet &= pro.compareTo(user.getTargetProtein()) >= 0;
             if (user.getTargetCost() != null)     allMet &= cost.compareTo(user.getTargetCost()) < 0;
 
-            result.put(day, new DayStatus(true, allMet, cal, pro, carb, fat, fib, cost));
+            result.put(day, new DayStatus(true, allMet, cal, netCal, pro, carb, fat, fib, cost));
         }
 
         return result;

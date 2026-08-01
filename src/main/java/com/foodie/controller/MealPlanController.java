@@ -42,6 +42,8 @@ public class MealPlanController {
         model.addAttribute("shoppingList", shoppingList);
         model.addAttribute("shoppingTotal", mealPlanService.getShoppingListTotalCost(shoppingList));
         model.addAttribute("dailyCalories", mealPlanService.getDailyCalories(plan));
+        model.addAttribute("today", LocalDate.now());
+        model.addAttribute("currentWeekStart", LocalDate.now().with(java.time.temporal.TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)));
         return "meal-plan/weekly";
     }
 

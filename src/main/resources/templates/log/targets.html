@@ -26,8 +26,8 @@
             <form th:action="@{/log/targets}" method="post">
                 <div class="mb-3">
                     <label class="form-label">
-                        <span class="text-danger fw-semibold"><i class="bi bi-fire"></i> Calories max</span>
-                        <span class="text-muted small">(met if daily kcal &lt; target)</span>
+                        <span class="text-danger fw-semibold"><i class="bi bi-fire"></i> Net Calories max</span>
+                        <span class="text-muted small">(met if net kcal &lt; target, where net = total &minus; burned)</span>
                     </label>
                     <div class="input-group">
                         <input type="number" name="targetCalories" class="form-control"
