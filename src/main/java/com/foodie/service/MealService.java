@@ -55,13 +55,14 @@ public class MealService {
     }
 
     @Transactional
-    public Meal createMeal(String name, MealCategory category, int servings, String recipe,
+    public Meal createMeal(String name, MealCategory category, int servings, String recipe, String recipeUrl,
                            List<Long> productIds, List<BigDecimal> quantities) {
         Meal meal = Meal.builder()
                 .name(name)
                 .category(category)
                 .servings(servings)
                 .recipe(recipe)
+                .recipeUrl(recipeUrl)
                 .owner(currentUserService.getCurrentUser())
                 .household(currentUserService.getCurrentHousehold())
                 .build();
@@ -82,13 +83,14 @@ public class MealService {
     }
 
     @Transactional
-    public Meal updateMeal(Long id, String name, MealCategory category, int servings, String recipe,
+    public Meal updateMeal(Long id, String name, MealCategory category, int servings, String recipe, String recipeUrl,
                            List<Long> productIds, List<BigDecimal> quantities) {
         Meal meal = findById(id);
         meal.setName(name);
         meal.setCategory(category);
         meal.setServings(servings);
         meal.setRecipe(recipe);
+        meal.setRecipeUrl(recipeUrl);
         meal.getIngredients().clear();
 
         for (int i = 0; i < productIds.size(); i++) {

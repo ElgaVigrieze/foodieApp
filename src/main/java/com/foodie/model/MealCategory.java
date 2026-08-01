@@ -10,7 +10,7 @@ public enum MealCategory {
     SNACK("Snack"),
     DESSERT("Dessert"),
     DRINK("Drink"),
-    READY_MEAL("Ready Meal");
+    SAUCE("Sauce");
 
     private final String label;
 

@@ -35,11 +35,12 @@ public class SchemaMigrationService {
         dropColumnIfExists("workouts", "date");
         addColumnIfNotExists("workouts", "estimated_kcal", "INTEGER");
         addColumnIfNotExists("workouts", "actual_kcal", "INTEGER");
+        addColumnIfNotExists("meals", "recipe_url", "VARCHAR(2048)");
 
         // Update check constraints for new enum values (PostgreSQL only - H2 doesn't add these)
         if (isPostgres) {
             dropAndRecreateCheckConstraint("meals", "meals_category_check",
-                    "category IN ('MAIN_COURSE','SOUP','SALAD','SNACK','DESSERT','DRINK','READY_MEAL')");
+                    "category IN ('MAIN_COURSE','SOUP','SALAD','SNACK','DESSERT','DRINK','SAUCE')");
             // No new enum constraints needed for fitness tables - they use VARCHAR
         }
     }

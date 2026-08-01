@@ -52,6 +52,13 @@ public class MealIngredient {
      * For KG/LITER: nutrition is per 100g/100ml, quantity is in kg/L → multiply by quantity*10
      * For PIECE: nutrition is per piece → multiply by quantity
      */
+    @Transient public BigDecimal getCalories() { return getNutrientAmount(NutrientType.CALORIES); }
+    @Transient public BigDecimal getProtein()  { return getNutrientAmount(NutrientType.PROTEIN); }
+    @Transient public BigDecimal getCarbs()    { return getNutrientAmount(NutrientType.CARBS); }
+    @Transient public BigDecimal getIngFat()   { return getNutrientAmount(NutrientType.FAT); }
+    @Transient public BigDecimal getFiber()    { return getNutrientAmount(NutrientType.FIBER); }
+    @Transient public BigDecimal getSugar()    { return getNutrientAmount(NutrientType.SUGAR); }
+
     @Transient
     public BigDecimal getNutrientAmount(NutrientType type) {
         if (product == null || quantity == null) return BigDecimal.ZERO;

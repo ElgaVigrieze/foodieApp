@@ -67,6 +67,7 @@ public class MealController {
                        @RequestParam MealCategory category,
                        @RequestParam int servings,
                        @RequestParam(required = false) String recipe,
+                       @RequestParam(required = false) String recipeUrl,
                        @RequestParam(required = false) Long id,
                        @RequestParam(name = "productIds", required = false) List<Long> productIds,
                        @RequestParam(name = "quantities", required = false) List<BigDecimal> quantities,
@@ -77,9 +78,9 @@ public class MealController {
         }
 
         if (id == null) {
-            mealService.createMeal(name, category, servings, recipe, productIds, quantities);
+            mealService.createMeal(name, category, servings, recipe, recipeUrl, productIds, quantities);
         } else {
-            mealService.updateMeal(id, name, category, servings, recipe, productIds, quantities);
+            mealService.updateMeal(id, name, category, servings, recipe, recipeUrl, productIds, quantities);
         }
 
         redirectAttributes.addFlashAttribute("success", "Meal saved successfully!");

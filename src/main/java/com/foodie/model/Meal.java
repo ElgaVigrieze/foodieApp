@@ -42,6 +42,9 @@ public class Meal {
     @Column(columnDefinition = "TEXT")
     private String recipe;
 
+    /** Optional link to the original recipe source (YouTube, blog, etc.). */
+    private String recipeUrl;
+
     /** Whether this meal is marked as a favorite. */
     @Builder.Default
     private boolean favorite = false;

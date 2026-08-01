@@ -51,6 +51,13 @@
                                       th:text="${meal?.recipe}"></textarea>
                         </div>
 
+                        <div class="mb-3">
+                            <label class="form-label">Recipe Link <span class="text-muted small">(optional — YouTube, blog, etc.)</span></label>
+                            <input type="url" name="recipeUrl" class="form-control"
+                                   th:value="${meal?.recipeUrl}"
+                                   placeholder="https://www.youtube.com/watch?v=...">
+                        </div>
+
                         <hr>
                         <h5 class="mb-3">Ingredients</h5>
 

@@ -50,7 +50,6 @@
                                 <form th:action="@{/meals/{id}/toggle-favorite(id=${meal.id})}" method="post" class="d-inline">
                                     <button type="submit" class="btn btn-sm p-0 border-0"><i class="bi bi-star-fill text-warning"></i></button>
                                 </form>
-                                <a th:href="@{/meals/{id}(id=${meal.id})}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-eye"></i></a>
                                 <a th:href="@{/meals/{id}/copy(id=${meal.id})}" class="btn btn-sm btn-outline-info"><i class="bi bi-copy"></i></a>
                                 <a th:href="@{/meals/{id}/edit(id=${meal.id})}" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>
                                 <form th:action="@{/meals/{id}/delete(id=${meal.id})}" method="post" class="d-inline" onsubmit="return confirm('Delete this meal?')">
@@ -77,7 +76,7 @@
         <div class="collapse" th:id="'meals-category-' + ${iterStat.index}">
             <div class="row">
                 <div th:each="meal : ${entry.value}" class="col-md-6 col-lg-4 mb-3">
-                    <div class="card h-100">
+                    <div class="card h-100" style="cursor:pointer;" onclick="window.location=this.dataset.href" th:data-href="@{/meals/{id}(id=${meal.id})}">
                         <div class="card-body">
                             <div class="d-flex justify-content-between align-items-start">
                                 <h5 class="card-title" th:text="${meal.name}"></h5>
@@ -101,7 +100,6 @@
                                     <form th:action="@{/meals/{id}/toggle-favorite(id=${meal.id})}" method="post" class="d-inline">
                                         <button type="submit" class="btn btn-sm p-0 border-0"><i class="bi bi-star text-muted"></i></button>
                                     </form>
-                                    <a th:href="@{/meals/{id}(id=${meal.id})}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-eye"></i></a>
                                     <a th:href="@{/meals/{id}/copy(id=${meal.id})}" class="btn btn-sm btn-outline-info"><i class="bi bi-copy"></i></a>
                                     <a th:href="@{/meals/{id}/edit(id=${meal.id})}" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>
                                     <form th:action="@{/meals/{id}/delete(id=${meal.id})}" method="post" class="d-inline" onsubmit="return confirm('Delete this meal?')">
