@@ -36,6 +36,7 @@ public class SchemaMigrationService {
         addColumnIfNotExists("workouts", "estimated_kcal", "INTEGER");
         addColumnIfNotExists("workouts", "actual_kcal", "INTEGER");
         addColumnIfNotExists("meals", "recipe_url", "VARCHAR(2048)");
+        addColumnIfNotExists("meals", "archived", "BOOLEAN DEFAULT FALSE");
 
         // Update check constraints for new enum values (PostgreSQL only - H2 doesn't add these)
         if (isPostgres) {

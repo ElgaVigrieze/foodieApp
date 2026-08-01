@@ -39,6 +39,14 @@
                     <a th:href="@{/meals/{id}/copy(id=${meal.id})}" class="btn btn-outline-secondary btn-sm">
                         <i class="bi bi-copy"></i> Copy
                     </a>
+                    <form th:action="@{/meals/{id}/toggle-archive(id=${meal.id})}" method="post" class="d-inline">
+                        <button type="submit" class="btn btn-sm"
+                                th:classappend="${meal.archived} ? 'btn-outline-success' : 'btn-outline-secondary'"
+                                th:title="${meal.archived} ? 'Unarchive meal' : 'Archive meal (hides from lists)'">
+                            <i class="bi" th:classappend="${meal.archived} ? 'bi-archive-fill' : 'bi-archive'"></i>
+                            <span th:text="${meal.archived} ? 'Unarchive' : 'Archive'"></span>
+                        </button>
+                    </form>
                     <a th:href="@{/meals}" class="btn btn-outline-secondary btn-sm">
                         <i class="bi bi-arrow-left"></i> Back
                     </a>

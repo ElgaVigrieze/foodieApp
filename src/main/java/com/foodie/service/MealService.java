@@ -24,17 +24,25 @@ public class MealService {
     public List<Meal> findAll() {
         Long hhId = currentUserService.getCurrentHouseholdId();
         if (hhId != null) {
-            return mealRepository.findByHouseholdIdOrderByNameAsc(hhId);
+            return mealRepository.findByHouseholdIdAndArchivedFalseOrderByNameAsc(hhId);
         }
-        return mealRepository.findAllByOrderByNameAsc();
+        return mealRepository.findByArchivedFalseOrderByNameAsc();
+    }
+
+    public List<Meal> findArchived() {
+        Long hhId = currentUserService.getCurrentHouseholdId();
+        if (hhId != null) {
+            return mealRepository.findByHouseholdIdAndArchivedTrueOrderByNameAsc(hhId);
+        }
+        return mealRepository.findByArchivedTrueOrderByNameAsc();
     }
 
     public List<Meal> findFavorites() {
         Long hhId = currentUserService.getCurrentHouseholdId();
         if (hhId != null) {
-            return mealRepository.findByHouseholdIdAndFavoriteTrueOrderByNameAsc(hhId);
+            return mealRepository.findByHouseholdIdAndArchivedFalseAndFavoriteTrueOrderByNameAsc(hhId);
         }
-        return mealRepository.findByFavoriteTrueOrderByNameAsc();
+        return mealRepository.findByArchivedFalseAndFavoriteTrueOrderByNameAsc();
     }
 
     public Map<MealCategory, List<Meal>> findAllGroupedByCategory() {
@@ -116,6 +124,15 @@ public class MealService {
     public void toggleFavorite(Long id) {
         Meal meal = findById(id);
         meal.setFavorite(!meal.isFavorite());
+        mealRepository.save(meal);
+    }
+
+    @Transactional
+    public void toggleArchive(Long id) {
+        Meal meal = findById(id);
+        meal.setArchived(!meal.isArchived());
+        // Remove from favorites when archiving
+        if (meal.isArchived()) meal.setFavorite(false);
         mealRepository.save(meal);
     }
 

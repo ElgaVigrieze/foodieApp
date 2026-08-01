@@ -342,6 +342,14 @@
             <div id="voice-text" class="text-muted mb-3"></div>
             <div id="voice-result" class="d-none mb-3">
                 <div class="alert alert-success" id="voice-match"></div>
+                <div id="voice-quantity-row" class="d-none mb-2">
+                    <label class="form-label small text-muted">Quantity</label>
+                    <div class="input-group input-group-sm">
+                        <input type="number" id="voice-quantity-input" class="form-control"
+                               step="0.001" min="0.001" value="0.1">
+                        <span class="input-group-text" id="voice-quantity-unit">kg</span>
+                    </div>
+                </div>
                 <button id="voice-confirm" class="btn btn-success">Confirm</button>
             </div>
             <button id="voice-cancel" class="btn btn-outline-secondary">Cancel</button>
@@ -392,9 +400,17 @@
                     parsedData = data;
                     var desc = data.type === 'meal'
                         ? data.servings + ' srv of ' + data.mealName
-                        : data.quantity + ' ' + data.productName;
+                        : data.productName;
                     if (data.slot) desc += ' (' + data.slot + ')';
-                    matchEl.textContent = desc;
+                    matchEl.textContent = (data.type === 'meal' ? 'Meal: ' : 'Product: ') + desc;
+                    var qRow = document.getElementById('voice-quantity-row');
+                    var qInput = document.getElementById('voice-quantity-input');
+                    if (data.type === 'product') {
+                        qInput.value = data.quantity || '0.1';
+                        qRow.classList.remove('d-none');
+                    } else {
+                        qRow.classList.add('d-none');
+                    }
                     resultDiv.classList.remove('d-none');
                     status.textContent = 'Match found!';
                 } else {
@@ -411,6 +427,9 @@
         if (!parsedData) return;
         var dateStr = document.querySelector('input[name="date"]').value;
         parsedData.date = dateStr;
+        if (parsedData.type === 'product') {
+            parsedData.quantity = parseFloat(document.getElementById('voice-quantity-input').value) || 0.1;
+        }
         fetch('/api/voice/submit', {
             method: 'POST',
             headers: {'Content-Type': 'application/json', [document.querySelector('meta[name=_csrf_header]').content]: document.querySelector('meta[name=_csrf]').content},

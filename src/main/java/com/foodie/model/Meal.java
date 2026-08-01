@@ -49,6 +49,10 @@ public class Meal {
     @Builder.Default
     private boolean favorite = false;
 
+    /** Archived meals are hidden from active lists but preserved in logs and plans. */
+    @Builder.Default
+    private boolean archived = false;
+
     /** Owner of this meal (nullable for legacy data). */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")

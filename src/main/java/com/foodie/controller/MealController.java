@@ -26,6 +26,7 @@ public class MealController {
     public String list(Model model) {
         model.addAttribute("favorites", mealService.findFavorites());
         model.addAttribute("mealsByCategory", mealService.findAllGroupedByCategory());
+        model.addAttribute("archivedMeals", mealService.findArchived());
         model.addAttribute("categories", MealCategory.values());
         model.addAttribute("isOwner", currentUserService.isOwner());
         return "meals/list";
@@ -97,6 +98,13 @@ public class MealController {
     @PostMapping("/{id}/toggle-favorite")
     public String toggleFavorite(@PathVariable Long id) {
         mealService.toggleFavorite(id);
+        return "redirect:/meals";
+    }
+
+    @PostMapping("/{id}/toggle-archive")
+    public String toggleArchive(@PathVariable Long id, RedirectAttributes redirectAttributes) {
+        mealService.toggleArchive(id);
+        redirectAttributes.addFlashAttribute("success", "Meal archive status updated.");
         return "redirect:/meals";
     }
 }

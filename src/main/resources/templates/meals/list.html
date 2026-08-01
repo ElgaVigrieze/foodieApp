@@ -52,6 +52,11 @@
                                 </form>
                                 <a th:href="@{/meals/{id}/copy(id=${meal.id})}" class="btn btn-sm btn-outline-info"><i class="bi bi-copy"></i></a>
                                 <a th:href="@{/meals/{id}/edit(id=${meal.id})}" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>
+                                <form th:action="@{/meals/{id}/toggle-archive(id=${meal.id})}" method="post" class="d-inline">
+                                    <button type="submit" class="btn btn-sm btn-outline-secondary" title="Archive this meal">
+                                        <i class="bi bi-archive"></i>
+                                    </button>
+                                </form>
                                 <form th:action="@{/meals/{id}/delete(id=${meal.id})}" method="post" class="d-inline" onsubmit="return confirm('Delete this meal?')">
                                     <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
                                 </form>
@@ -102,8 +107,54 @@
                                     </form>
                                     <a th:href="@{/meals/{id}/copy(id=${meal.id})}" class="btn btn-sm btn-outline-info"><i class="bi bi-copy"></i></a>
                                     <a th:href="@{/meals/{id}/edit(id=${meal.id})}" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>
+                                    <form th:action="@{/meals/{id}/toggle-archive(id=${meal.id})}" method="post" class="d-inline">
+                                        <button type="submit" class="btn btn-sm btn-outline-secondary" title="Archive this meal">
+                                            <i class="bi bi-archive"></i>
+                                        </button>
+                                    </form>
                                     <form th:action="@{/meals/{id}/delete(id=${meal.id})}" method="post" class="d-inline" onsubmit="return confirm('Delete this meal?')">
                                         <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Archived meals (collapsed by default) -->
+    <div th:if="${!archivedMeals.isEmpty()}" class="mt-4">
+        <h5 class="text-muted" style="cursor:pointer;"
+            data-bs-toggle="collapse"
+            data-bs-target="#archived-meals-section"
+            aria-expanded="false">
+            <i class="bi bi-chevron-down me-1 collapse-chevron" style="transform:rotate(-90deg)"></i>
+            <i class="bi bi-archive text-muted"></i> Archived
+            <span class="badge bg-secondary small" th:text="${archivedMeals.size()}"></span>
+        </h5>
+        <div class="collapse" id="archived-meals-section">
+            <div class="row">
+                <div th:each="meal : ${archivedMeals}" class="col-md-6 col-lg-4 mb-3">
+                    <div class="card h-100 border-secondary opacity-75">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <h5 class="card-title text-muted" th:text="${meal.name}"></h5>
+                                <span class="badge bg-secondary" th:text="${meal.category.label}"></span>
+                            </div>
+                            <p class="text-muted small mb-2">
+                                <span th:text="${meal.servings}"></span> servings |
+                                <span th:text="${meal.ingredients.size()}"></span> ingredients
+                            </p>
+                            <div class="d-flex justify-content-between align-items-center mt-2">
+                                <span class="text-muted small">EUR <span th:text="${#numbers.formatDecimal(meal.costPerServing, 1, 2)}"></span>/srv</span>
+                                <div>
+                                    <a th:href="@{/meals/{id}(id=${meal.id})}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-eye"></i></a>
+                                    <form th:action="@{/meals/{id}/toggle-archive(id=${meal.id})}" method="post" class="d-inline">
+                                        <button type="submit" class="btn btn-sm btn-outline-success" title="Unarchive">
+                                            <i class="bi bi-archive-fill"></i>
+                                        </button>
                                     </form>
                                 </div>
                             </div>

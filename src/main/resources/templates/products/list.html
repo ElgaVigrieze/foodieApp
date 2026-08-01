@@ -53,7 +53,10 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <tr th:each="p : ${entry.value}">
+                            <tr th:each="p : ${entry.value}"
+                                th:data-href="@{/products/{id}/edit(id=${p.id})}"
+                                style="cursor:pointer;"
+                                onclick="window.location=this.dataset.href">
                                 <td th:text="${p.name}"></td>
                                 <td th:text="${p.unit.label}"></td>
                                 <td th:text="${#numbers.formatDecimal(p.pricePerUnit, 1, 2)}"></td>
@@ -64,10 +67,7 @@
                                 <td th:text="${p.fiber}"></td>
                                 <td th:text="${p.sugar}"></td>
                                 <td th:text="${p.netCarbs}"></td>
-                                <td>
-                                    <a th:href="@{/products/{id}/edit(id=${p.id})}" class="btn btn-sm btn-outline-primary">
-                                        <i class="bi bi-pencil"></i>
-                                    </a>
+                                <td onclick="event.stopPropagation();">
                                     <form th:action="@{/products/{id}/delete(id=${p.id})}" method="post" class="d-inline"
                                           onsubmit="return confirm('Delete this product?')">
                                         <button type="submit" class="btn btn-sm btn-outline-danger">
