@@ -17,6 +17,12 @@
                         <i class="bi bi-arrow-left"></i> Back
                     </a>
                 </div>
+                <div class="card-header bg-white border-top py-2 d-flex gap-2 sticky-top" style="z-index:10;">
+                        <button type="submit" form="workout-form" class="btn btn-success btn-sm">
+                            <i class="bi bi-check-lg"></i> Save Workout
+                        </button>
+                        <a th:href="@{/fitness/workouts}" class="btn btn-outline-secondary btn-sm">Cancel</a>
+                    </div>
                 <div class="card-body">
                     <form th:action="@{/fitness/workouts/save}" method="post" id="workout-form">
                         <input type="hidden" name="id" th:value="${workout.id}">
