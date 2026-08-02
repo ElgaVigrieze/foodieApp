@@ -45,10 +45,7 @@
             <div class="fs-5 fw-bold text-warning" th:text="${workout.estimatedKcal}"></div>
             <div class="small text-muted">est. kcal</div>
         </div>
-        <div th:if="${workout.actualKcal != null}" class="card px-3 py-2 border-0 bg-light text-center">
-            <div class="fs-5 fw-bold text-success" th:text="${workout.actualKcal}"></div>
-            <div class="small text-muted">actual kcal</div>
-        </div>
+
     </div>
 
     <!-- Notes -->
@@ -157,21 +154,57 @@
                         <span class="text-muted small" th:text="${set['reps'] + ' reps/set'}"></span>
                         <span class="text-muted small" th:text="${'× ' + (set['numSets'] ?: 3) + ' sets'}"></span>
                     </div>
-                    <!-- Per-set checkboxes -->
-                    <div class="d-flex flex-wrap gap-2">
-                        <div th:each="setNum : ${#numbers.sequence(1, (set['numSets'] ?: 3))}">
-                            <div class="form-check">
-                                <input class="form-check-input strength-check" type="checkbox"
-                                       th:id="'check-' + ${exStat.index} + '-' + ${setNum}"
-                                       th:data-ex="${exStat.index}"
-                                       th:data-set="${setNum}"
-                                       th:data-workout="${workout.id}">
-                                <label class="form-check-label small"
-                                       th:for="'check-' + ${exStat.index} + '-' + ${setNum}"
-                                       th:text="'Set ' + ${setNum}"></label>
+                    <!-- Per-set checkboxes (or timer for timed exercises) -->
+                    <th:block th:if="${set['exercise'] == 'HANG' or set['exercise'] == 'FARMERS_CARRY' or set['exercise'] == 'PLANK'}">
+                        <!-- Timed exercise: show prep/work info + timer buttons per set -->
+                        <div class="d-flex flex-wrap gap-2 align-items-center mb-1">
+                            <span class="badge bg-info text-dark small">
+                                <i class="bi bi-stopwatch"></i>
+                                Prep <span th:text="${set['prepSecs'] ?: 10}"></span>s
+                                / Work <span th:text="${set['workSecs'] ?: 30}"></span>s
+                            </span>
+                        </div>
+                        <div class="d-flex flex-wrap gap-2">
+                            <div th:each="setNum : ${#numbers.sequence(1, (set['numSets'] ?: 3))}">
+                                <div class="d-flex align-items-center gap-1">
+                                    <div class="form-check mb-0">
+                                        <input class="form-check-input strength-check" type="checkbox"
+                                               th:id="'check-' + ${exStat.index} + '-' + ${setNum}"
+                                               th:data-ex="${exStat.index}"
+                                               th:data-set="${setNum}"
+                                               th:data-workout="${workout.id}">
+                                        <label class="form-check-label small"
+                                               th:for="'check-' + ${exStat.index} + '-' + ${setNum}"
+                                               th:text="'Set ' + ${setNum}"></label>
+                                    </div>
+                                    <button type="button"
+                                            th:data-prep="${set['prepSecs'] ?: 10}"
+                                            th:data-work="${set['workSecs'] ?: 30}"
+                                            th:data-label="${set['exercise'] + ' Set ' + setNum}"
+                                            class="btn btn-sm btn-outline-info py-0 timed-set-btn"
+                                            style="font-size:0.7rem;">
+                                        <i class="bi bi-play-fill"></i>
+                                    </button>
+                                </div>
                             </div>
                         </div>
-                    </div>
+                    </th:block>
+                    <th:block th:unless="${set['exercise'] == 'HANG' or set['exercise'] == 'FARMERS_CARRY' or set['exercise'] == 'PLANK'}">
+                        <div class="d-flex flex-wrap gap-2">
+                            <div th:each="setNum : ${#numbers.sequence(1, (set['numSets'] ?: 3))}">
+                                <div class="form-check">
+                                    <input class="form-check-input strength-check" type="checkbox"
+                                           th:id="'check-' + ${exStat.index} + '-' + ${setNum}"
+                                           th:data-ex="${exStat.index}"
+                                           th:data-set="${setNum}"
+                                           th:data-workout="${workout.id}">
+                                    <label class="form-check-label small"
+                                           th:for="'check-' + ${exStat.index} + '-' + ${setNum}"
+                                           th:text="'Set ' + ${setNum}"></label>
+                                </div>
+                            </div>
+                        </div>
+                    </th:block>
                 </div>
 
                 <div id="all-done-banner" class="alert alert-success mt-2" style="display:none">
@@ -220,6 +253,26 @@
         </div>
     </div>
 
+</div>
+
+<!-- Timed set modal -->
+<div id="timed-set-modal" class="d-none position-fixed top-0 start-0 w-100 h-100" style="z-index:9999;background:rgba(0,0,0,0.8);">
+    <div class="d-flex align-items-center justify-content-center h-100">
+        <div class="card text-center p-4" style="min-width:300px;">
+            <div class="fs-6 fw-semibold mb-1" id="timed-set-label"></div>
+            <div class="display-1 fw-bold font-monospace mb-1" id="timed-set-display">00:00</div>
+            <div class="fs-5 text-muted mb-3" id="timed-set-phase">Ready</div>
+            <div class="d-flex justify-content-center gap-2 mb-3">
+                <button class="btn btn-success btn-lg" id="timed-btn-start"><i class="bi bi-play-fill"></i></button>
+                <button class="btn btn-warning btn-lg" id="timed-btn-pause" disabled><i class="bi bi-pause-fill"></i></button>
+                <button class="btn btn-secondary btn-lg" id="timed-btn-reset"><i class="bi bi-arrow-counterclockwise"></i></button>
+            </div>
+            <div class="progress mb-3" style="height:8px;">
+                <div class="progress-bar" id="timed-progress-bar" style="width:0%"></div>
+            </div>
+            <button class="btn btn-outline-secondary" id="timed-btn-close">Close</button>
+        </div>
+    </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
@@ -415,6 +468,98 @@ function beepDone() {
     }
 
     checkAllDone();
+})();
+
+// ---- Timed sets (HANG / FARMERS_CARRY / PLANK) ----
+(function() {
+    var modal = document.getElementById('timed-set-modal');
+    if (!modal) return;
+
+    var display = document.getElementById('timed-set-display');
+    var phaseEl = document.getElementById('timed-set-phase');
+    var labelEl = document.getElementById('timed-set-label');
+    var progressBar = document.getElementById('timed-progress-bar');
+    var btnStart = document.getElementById('timed-btn-start');
+    var btnPause = document.getElementById('timed-btn-pause');
+    var btnReset = document.getElementById('timed-btn-reset');
+    var btnClose = document.getElementById('timed-btn-close');
+
+    var phases = [], phaseIdx = 0, remaining = 0, running = false, interval = null;
+
+    function fmt(s) {
+        return String(Math.floor(s/60)).padStart(2,'0') + ':' + String(s%60).padStart(2,'0');
+    }
+
+    function updateUI() {
+        if (phaseIdx >= phases.length) {
+            display.textContent = '00:00';
+            phaseEl.textContent = 'Done! ✓';
+            progressBar.style.width = '100%';
+            return;
+        }
+        var ph = phases[phaseIdx];
+        display.textContent = fmt(remaining);
+        phaseEl.textContent = ph.label;
+        progressBar.style.width = (((ph.duration - remaining) / ph.duration) * 100) + '%';
+        progressBar.className = 'progress-bar ' + ph.color;
+    }
+
+    function tick() {
+        remaining--;
+        if (remaining <= 0) {
+            phaseIdx++;
+            if (phaseIdx < phases.length) {
+                remaining = phases[phaseIdx].duration;
+                if (typeof beepGo !== 'undefined') {
+                    phases[phaseIdx].label.includes('Work') ? beepGo() : beepRest();
+                }
+            } else {
+                clearInterval(interval); running = false;
+                btnStart.disabled = true; btnPause.disabled = true;
+                if (typeof beepDone !== 'undefined') beepDone();
+            }
+        }
+        if (remaining > 0 && remaining <= 3 && typeof beepTick !== 'undefined') beepTick();
+        updateUI();
+    }
+
+    btnStart.addEventListener('click', function() {
+        if (running || phaseIdx >= phases.length) return;
+        if (typeof audioCtx !== 'undefined' && audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+        running = true; interval = setInterval(tick, 1000);
+        btnStart.disabled = true; btnPause.disabled = false;
+        if (typeof beepRest !== 'undefined') beepRest();
+    });
+    btnPause.addEventListener('click', function() {
+        clearInterval(interval); running = false;
+        btnStart.disabled = false; btnPause.disabled = true;
+    });
+    btnReset.addEventListener('click', function() {
+        clearInterval(interval); running = false;
+        phaseIdx = 0; remaining = phases.length > 0 ? phases[0].duration : 0;
+        btnStart.disabled = false; btnPause.disabled = true;
+        updateUI();
+    });
+    btnClose.addEventListener('click', function() {
+        clearInterval(interval); running = false; modal.classList.add('d-none');
+    });
+
+    document.querySelectorAll('.timed-set-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var prep = parseInt(btn.dataset.prep) || 10;
+            var work = parseInt(btn.dataset.work) || 30;
+            var label = btn.dataset.label || 'Set';
+            labelEl.textContent = label;
+            phases = [];
+            if (prep > 0) phases.push({ label: 'Prepare', duration: prep, color: 'bg-warning' });
+            phases.push({ label: 'Work!', duration: work, color: 'bg-danger' });
+            phaseIdx = 0; remaining = phases[0].duration; running = false;
+            clearInterval(interval);
+            btnStart.disabled = false; btnPause.disabled = true;
+            updateUI();
+            modal.classList.remove('d-none');
+        });
+    });
 })();
 </script>
 </body>

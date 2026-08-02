@@ -129,7 +129,8 @@ public class FitnessService {
         } catch (Exception e) { return "{}"; }
     }
 
-    public String buildStrengthJson(String[] exercises, String[] reps, String[] numSets, String[] weightKg) {
+    public String buildStrengthJson(String[] exercises, String[] reps, String[] numSets, String[] weightKg,
+                                     String[] prepSecs, String[] workSecs) {
         try {
             List<Map<String, Object>> sets = new ArrayList<>();
             for (int i = 0; i < exercises.length; i++) {
@@ -141,11 +142,20 @@ public class FitnessService {
                         ? Integer.parseInt(numSets[i]) : 3;
                 double kg = (weightKg != null && weightKg.length > i && weightKg[i] != null && !weightKg[i].isBlank())
                         ? Double.parseDouble(weightKg[i]) : 0.0;
+                int prep = (prepSecs != null && prepSecs.length > i && prepSecs[i] != null && !prepSecs[i].isBlank())
+                        ? Integer.parseInt(prepSecs[i]) : 10;
+                int work = (workSecs != null && workSecs.length > i && workSecs[i] != null && !workSecs[i].isBlank())
+                        ? Integer.parseInt(workSecs[i]) : 30;
                 Map<String, Object> setMap = new java.util.LinkedHashMap<>();
                 setMap.put("exercise", ex);
                 setMap.put("reps", r);
                 setMap.put("numSets", ns);
                 if (kg > 0) setMap.put("weightKg", kg);
+                var timedExercises = java.util.Set.of("HANG", "FARMERS_CARRY", "PLANK");
+                if (timedExercises.contains(ex)) {
+                    setMap.put("prepSecs", prep);
+                    setMap.put("workSecs", work);
+                }
                 sets.add(setMap);
             }
             return objectMapper.writeValueAsString(Map.of("sets", sets));

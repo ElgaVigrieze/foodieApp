@@ -70,17 +70,12 @@
                                 <input type="number" name="estimatedKcal" class="form-control"
                                        th:value="${workout.estimatedKcal}" min="0" placeholder="300">
                             </div>
-                            <div class="col-md-2">
-                                <label class="form-label">Actual kcal</label>
-                                <input type="number" name="actualKcal" class="form-control"
-                                       th:value="${workout.actualKcal}" min="0" placeholder="—">
-                            </div>
                         </div>
 
                         <hr>
 
                         <!-- RUNNING section -->
-                        <div id="section-RUNNING" class="type-section">
+                        <div id="section-RUNNING" class="type-section" style="display:none">
                             <h5 class="mb-3"><i class="bi bi-person-walking"></i> Running Details</h5>
                             <div class="row mb-3">
                                 <div class="col-md-4">
@@ -150,29 +145,30 @@
                         <div id="section-STRENGTH" class="type-section" style="display:none">
                             <h5 class="mb-3"><i class="bi bi-activity"></i> Strength Sets</h5>
                             <div class="row mb-1 text-muted small px-1">
-                <div class="col-md-4">Exercise</div>
-                <div class="col-md-2">Reps</div>
-                <div class="col-md-2">Sets</div>
+                <div class="col-md-3">Exercise</div>
+                <div class="col-md-1">Reps</div>
+                <div class="col-md-1">Sets</div>
                 <div class="col-md-2">Weight</div>
-                <div class="col-md-2"></div>
+                <div class="col-md-2 timer-col-header" style="font-size:0.75rem;">Prep / Work (secs)</div>
+                <div class="col-md-1"></div>
             </div>
             <div id="strength-sets-container">
                                 <!-- Existing sets (edit mode) -->
                                 <th:block th:if="${parsedSets['sets'] != null}">
                                     <div th:each="set, stat : ${parsedSets['sets']}" class="row mb-2 strength-row">
-                                        <div class="col-md-4">
-                                            <select th:name="'strengthExercise'" class="form-select">
+                                        <div class="col-md-3">
+                                            <select th:name="'strengthExercise'" class="form-select exercise-select" onchange="toggleTimerCols(this)">
                                                 <option value="">-- Exercise --</option>
-                                                <option th:each="ex : ${ {'RDL','SINGLE_LEG_RDL','ROW','BENCH_PRESS','LUNGE','BULGARIAN_SPLIT_SQUAT','PUSHUP','HANG','FARMERS_CARRY'} }"
+                                                <option th:each="ex : ${ {'RDL','SINGLE_LEG_RDL','ROW','BENCH_PRESS','LUNGE','BULGARIAN_SPLIT_SQUAT','PUSHUP','HANG','FARMERS_CARRY','PLANK'} }"
                                                         th:value="${ex}" th:text="${ex}"
                                                         th:selected="${set['exercise'] == ex}"></option>
                                             </select>
                                         </div>
-                                        <div class="col-md-2">
+                                        <div class="col-md-1">
                                             <input type="number" name="strengthReps" class="form-control"
-                                                   th:value="${set['reps']}" min="1" placeholder="Reps">
+                                                   th:value="${set['reps']}" min="0" placeholder="Reps">
                                         </div>
-                                        <div class="col-md-2">
+                                        <div class="col-md-1">
                                             <input type="number" name="strengthNumSets" class="form-control"
                                                    th:value="${set['numSets'] ?: 3}" min="1" placeholder="Sets">
                                         </div>
@@ -183,7 +179,18 @@
                                                 <span class="input-group-text">kg</span>
                                             </div>
                                         </div>
-                                        <div class="col-md-2">
+                                        <div class="col-md-2 timer-cols"
+                                             th:style="${set['exercise'] != null and (set['exercise'] == 'HANG' or set['exercise'] == 'FARMERS_CARRY' or set['exercise'] == 'PLANK')} ? '' : 'display:none'">
+                                            <div class="input-group input-group-sm">
+                                                <input type="number" name="strengthPrepSecs" class="form-control"
+                                                       th:value="${set['prepSecs'] ?: 10}" min="0" placeholder="Prep">
+                                                <span class="input-group-text">/</span>
+                                                <input type="number" name="strengthWorkSecs" class="form-control"
+                                                       th:value="${set['workSecs'] ?: 30}" min="1" placeholder="Work">
+                                                <span class="input-group-text">s</span>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-1">
                                             <button type="button" class="btn btn-outline-danger btn-remove-strength">
                                                 <i class="bi bi-x-lg"></i>
                                             </button>
@@ -192,29 +199,34 @@
                                 </th:block>
                                 <!-- Default empty row for new workout -->
                                 <div th:if="${parsedSets['sets'] == null}" class="row mb-2 strength-row">
-                                    <div class="col-md-4">
-                                        <select name="strengthExercise" class="form-select">
+                                    <div class="col-md-3">
+                                        <select name="strengthExercise" class="form-select exercise-select" onchange="toggleTimerCols(this)">
                                             <option value="">-- Exercise --</option>
-                                            <option th:each="ex : ${ {'RDL','SINGLE_LEG_RDL','ROW','BENCH_PRESS','LUNGE','BULGARIAN_SPLIT_SQUAT','PUSHUP','HANG','FARMERS_CARRY'} }"
+                                            <option th:each="ex : ${ {'RDL','SINGLE_LEG_RDL','ROW','BENCH_PRESS','LUNGE','BULGARIAN_SPLIT_SQUAT','PUSHUP','HANG','FARMERS_CARRY','PLANK'} }"
                                                     th:value="${ex}" th:text="${ex}"></option>
                                         </select>
                                     </div>
-                                    <div class="col-md-2">
-                                        <input type="number" name="strengthReps" class="form-control"
-                                               min="1" placeholder="Reps">
+                                    <div class="col-md-1">
+                                        <input type="number" name="strengthReps" class="form-control" min="0" placeholder="Reps">
                                     </div>
-                                    <div class="col-md-2">
-                                        <input type="number" name="strengthNumSets" class="form-control"
-                                               min="1" value="3" placeholder="Sets">
+                                    <div class="col-md-1">
+                                        <input type="number" name="strengthNumSets" class="form-control" min="1" value="3" placeholder="Sets">
                                     </div>
                                     <div class="col-md-2">
                                         <div class="input-group input-group-sm">
-                                            <input type="number" name="strengthWeightKg" class="form-control"
-                                                   min="0" step="0.5" placeholder="kg">
+                                            <input type="number" name="strengthWeightKg" class="form-control" min="0" step="0.5" placeholder="kg">
                                             <span class="input-group-text">kg</span>
                                         </div>
                                     </div>
-                                    <div class="col-md-2">
+                                    <div class="col-md-2 timer-cols" style="display:none">
+                                        <div class="input-group input-group-sm">
+                                            <input type="number" name="strengthPrepSecs" class="form-control" min="0" value="10" placeholder="Prep">
+                                            <span class="input-group-text">/</span>
+                                            <input type="number" name="strengthWorkSecs" class="form-control" min="1" value="30" placeholder="Work">
+                                            <span class="input-group-text">s</span>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-1">
                                         <button type="button" class="btn btn-outline-danger btn-remove-strength">
                                             <i class="bi bi-x-lg"></i>
                                         </button>
@@ -388,8 +400,26 @@
         if (section) section.style.display = 'block';
     }
 
+    const TIMER_EXERCISES = new Set(['HANG', 'FARMERS_CARRY', 'PLANK']);
+
+    function toggleTimerCols(select) {
+        var row = select.closest('.strength-row');
+        var timerCols = row.querySelector('.timer-cols');
+        if (timerCols) {
+            timerCols.style.display = TIMER_EXERCISES.has(select.value) ? '' : 'none';
+        }
+    }
+
+    // Show timer cols for existing rows on load
+    function initTimerCols() {
+        document.querySelectorAll('.exercise-select').forEach(function(sel) {
+            toggleTimerCols(sel);
+        });
+    }
+
     document.addEventListener('DOMContentLoaded', function() {
         showSection(currentType);
+        initTimerCols();
 
         // ---- Dynamic row builders ----
         function makeAddRowHandler(containerId, rowClass, removeClass, rowTemplate) {
@@ -417,8 +447,8 @@
             const row = document.createElement('div');
             row.className = 'row mb-2 strength-row';
             row.innerHTML = `
-                <div class="col-md-4">
-                    <select name="strengthExercise" class="form-select">
+                <div class="col-md-3">
+                    <select name="strengthExercise" class="form-select exercise-select" onchange="toggleTimerCols(this)">
                         <option value="">-- Exercise --</option>
                         <option value="RDL">RDL</option>
                         <option value="SINGLE_LEG_RDL">SINGLE_LEG_RDL</option>
@@ -429,12 +459,13 @@
                         <option value="PUSHUP">PUSHUP</option>
                         <option value="HANG">HANG</option>
                         <option value="FARMERS_CARRY">FARMERS_CARRY</option>
+                        <option value="PLANK">PLANK</option>
                     </select>
                 </div>
-                <div class="col-md-2">
-                    <input type="number" name="strengthReps" class="form-control" min="1" placeholder="Reps">
+                <div class="col-md-1">
+                    <input type="number" name="strengthReps" class="form-control" min="0" placeholder="Reps">
                 </div>
-                <div class="col-md-2">
+                <div class="col-md-1">
                     <input type="number" name="strengthNumSets" class="form-control" min="1" value="3" placeholder="Sets">
                 </div>
                 <div class="col-md-2">
@@ -443,7 +474,15 @@
                         <span class="input-group-text">kg</span>
                     </div>
                 </div>
-                <div class="col-md-2">
+                <div class="col-md-2 timer-cols" style="display:none">
+                    <div class="input-group input-group-sm">
+                        <input type="number" name="strengthPrepSecs" class="form-control" min="0" value="10" placeholder="Prep">
+                        <span class="input-group-text">/</span>
+                        <input type="number" name="strengthWorkSecs" class="form-control" min="1" value="30" placeholder="Work">
+                        <span class="input-group-text">s</span>
+                    </div>
+                </div>
+                <div class="col-md-1">
                     <button type="button" class="btn btn-outline-danger btn-remove-strength"><i class="bi bi-x-lg"></i></button>
                 </div>`;
             container.appendChild(row);

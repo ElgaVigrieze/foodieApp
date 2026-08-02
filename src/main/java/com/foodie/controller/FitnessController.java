@@ -115,7 +115,6 @@ public class FitnessController {
             @RequestParam(required = false) String youtubeUrl,
             @RequestParam(required = false) Integer totalMinutes,
             @RequestParam(required = false) Integer estimatedKcal,
-            @RequestParam(required = false) Integer actualKcal,
             // RUNNING
             @RequestParam(required = false) String runningTempo,
             @RequestParam(required = false) Double runningDistanceKm,
@@ -132,6 +131,8 @@ public class FitnessController {
             @RequestParam(required = false) String[] strengthReps,
             @RequestParam(required = false) String[] strengthNumSets,
             @RequestParam(required = false) String[] strengthWeightKg,
+            @RequestParam(required = false) String[] strengthPrepSecs,
+            @RequestParam(required = false) String[] strengthWorkSecs,
             // PLYO
             @RequestParam(required = false) String[] plyoJumpType,
             @RequestParam(required = false) String[] plyoReps,
@@ -149,7 +150,9 @@ public class FitnessController {
                     strengthExercise != null ? strengthExercise : new String[0],
                     strengthReps != null ? strengthReps : new String[0],
                     strengthNumSets != null ? strengthNumSets : new String[0],
-                    strengthWeightKg != null ? strengthWeightKg : new String[0]);
+                    strengthWeightKg != null ? strengthWeightKg : new String[0],
+                    strengthPrepSecs != null ? strengthPrepSecs : new String[0],
+                    strengthWorkSecs != null ? strengthWorkSecs : new String[0]);
             case PLYO -> fitnessService.buildPlyoJson(
                     plyoJumpType != null ? plyoJumpType : new String[0],
                     plyoReps != null ? plyoReps : new String[0]);
@@ -166,7 +169,6 @@ public class FitnessController {
             workout.setYoutubeUrl(youtubeUrl);
             workout.setTotalMinutes(totalMinutes);
             workout.setEstimatedKcal(estimatedKcal);
-            workout.setActualKcal(actualKcal);
             workout.setSetsJson(setsJson);
         } else {
             workout = Workout.builder()
