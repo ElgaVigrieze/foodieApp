@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Import Recipe - Foodie')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: navbar}"></nav>
+
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-lg-7">
+
+            <!-- Flash messages -->
+            <div th:if="${error}" class="alert alert-danger alert-dismissible fade show" role="alert">
+                <span th:text="${error}"></span>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+
+            <div class="d-flex align-items-center gap-2 mb-3 mt-2">
+                <a th:href="@{/meals}" class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i>
+                </a>
+                <h2 class="mb-0"><i class="bi bi-magic"></i> Import Recipe</h2>
+            </div>
+
+            <!-- AI unavailable warning -->
+            <div th:if="${!cloudflareAvailable}" class="alert alert-warning">
+                <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                AI extraction is not configured. Set <code>CLOUDFLARE_ACCOUNT_ID</code> and
+                <code>CLOUDFLARE_API_TOKEN</code> environment variables to enable it.
+            </div>
+
+            <!-- Tabs: URL vs Photo -->
+            <ul class="nav nav-tabs mb-0" id="importTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="url-tab" data-bs-toggle="tab"
+                            data-bs-target="#tab-url" type="button" role="tab">
+                        <i class="bi bi-link-45deg"></i> From URL
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="photo-tab" data-bs-toggle="tab"
+                            data-bs-target="#tab-photo" type="button" role="tab">
+                        <i class="bi bi-camera"></i> From Photo
+                    </button>
+                </li>
+            </ul>
+
+            <div class="tab-content border border-top-0 rounded-bottom p-4 bg-white shadow-sm">
+
+                <!-- ── URL tab ──────────────────────────────────────────── -->
+                <div class="tab-pane fade show active" id="tab-url" role="tabpanel">
+                    <p class="text-muted small mb-3">
+                        Paste a link to a recipe blog, YouTube video, or Instagram reel.
+                        The AI will read the page and extract ingredients automatically.
+                    </p>
+                    <form th:action="@{/meals/import/from-url}" method="post" id="urlForm">
+                        <div class="mb-3">
+                            <label for="recipeUrl" class="form-label fw-semibold">Recipe URL</label>
+                            <input type="url" name="recipeUrl" id="recipeUrl" class="form-control form-control-lg"
+                                   placeholder="https://www.youtube.com/watch?v=... or https://..."
+                                   required>
+                        </div>
+                        <button type="submit" class="btn btn-success btn-lg w-100" id="urlSubmitBtn"
+                                th:disabled="${!cloudflareAvailable}">
+                            <span id="urlSpinner" class="spinner-border spinner-border-sm d-none me-1" role="status"></span>
+                            <i class="bi bi-magic me-1"></i> Extract Recipe
+                        </button>
+                    </form>
+                </div>
+
+                <!-- ── Photo tab ────────────────────────────────────────── -->
+                <div class="tab-pane fade" id="tab-photo" role="tabpanel">
+                    <p class="text-muted small mb-3">
+                        Upload a screenshot of a recipe reel, a photo of a recipe card,
+                        or any image that shows ingredients and instructions.
+                    </p>
+                    <form th:action="@{/meals/import/from-photo}" method="post"
+                          enctype="multipart/form-data" id="photoForm">
+                        <div class="mb-3">
+                            <label for="photo" class="form-label fw-semibold">Recipe Image</label>
+                            <input type="file" name="photo" id="photo" class="form-control"
+                                   accept="image/*" required>
+                            <div class="form-text">JPG, PNG, or WebP — max 20 MB</div>
+                        </div>
+
+                        <!-- Image preview -->
+                        <div id="photoPreviewWrap" class="mb-3 d-none">
+                            <img id="photoPreview" src="#" alt="preview"
+                                 class="img-fluid rounded border" style="max-height:260px;">
+                        </div>
+
+                        <button type="submit" class="btn btn-success btn-lg w-100" id="photoSubmitBtn"
+                                th:disabled="${!cloudflareAvailable}">
+                            <span id="photoSpinner" class="spinner-border spinner-border-sm d-none me-1" role="status"></span>
+                            <i class="bi bi-camera me-1"></i> Analyse Photo
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Tips -->
+            <div class="mt-4 p-3 bg-light rounded border">
+                <h6 class="fw-semibold mb-2"><i class="bi bi-lightbulb me-1 text-warning"></i> Tips</h6>
+                <ul class="small text-muted mb-0">
+                    <li>For YouTube or Instagram, paste the full video/reel URL — the AI reads the description and captions.</li>
+                    <li>For reels without a written recipe in the description, take a screenshot of the on-screen ingredients and use the Photo tab.</li>
+                    <li>You'll get a preview before anything is saved, so you can adjust names, quantities and categories.</li>
+                    <li>Missing products are created automatically with nutrition data fetched from Open Food Facts.</li>
+                </ul>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    // Show image preview
+    document.getElementById('photo').addEventListener('change', function () {
+        const file = this.files[0];
+        if (!file) return;
+        const wrap = document.getElementById('photoPreviewWrap');
+        const img  = document.getElementById('photoPreview');
+        img.src = URL.createObjectURL(file);
+        wrap.classList.remove('d-none');
+    });
+
+    // Show spinner on submit (URL form)
+    document.getElementById('urlForm').addEventListener('submit', function () {
+        document.getElementById('urlSpinner').classList.remove('d-none');
+        document.getElementById('urlSubmitBtn').disabled = true;
+        document.getElementById('urlSubmitBtn').innerHTML =
+            '<span class="spinner-border spinner-border-sm me-1" role="status"></span> Extracting…';
+    });
+
+    // Show spinner on submit (photo form)
+    document.getElementById('photoForm').addEventListener('submit', function () {
+        document.getElementById('photoSpinner').classList.remove('d-none');
+        document.getElementById('photoSubmitBtn').disabled = true;
+        document.getElementById('photoSubmitBtn').innerHTML =
+            '<span class="spinner-border spinner-border-sm me-1" role="status"></span> Analysing…';
+    });
+</script>
+</body>
+</html>

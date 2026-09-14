@@ -32,6 +32,7 @@ spring:
 server:
   port: ${PORT:9090}
   address: ${SERVER_ADDRESS:0.0.0.0}
+  forward-headers-strategy: framework
 
 spring.servlet.multipart:
   max-file-size: 20MB
@@ -45,3 +46,4 @@ app:
   proxy:
     host: ${PROXY_HOST:}
     port: ${PROXY_PORT:0}
+

@@ -45,7 +45,6 @@ public class FoodLogController {
         model.addAttribute("slotTotals", foodLogService.getSlotTotals(selectedDate));
         model.addAttribute("prevDate", selectedDate.minusDays(1));
         model.addAttribute("nextDate", selectedDate.plusDays(1));
-        // Pass current user targets so daily view can show them if needed
         AppUser user = currentUserService.getCurrentUser();
         model.addAttribute("currentUser", user);
         return "log/daily";

@@ -38,6 +38,7 @@ public class SchemaMigrationService {
         addColumnIfNotExists("meals", "recipe_url", "VARCHAR(2048)");
         addColumnIfNotExists("meals", "archived", "BOOLEAN DEFAULT FALSE");
 
+
         // Update check constraints for new enum values (PostgreSQL only - H2 doesn't add these)
         if (isPostgres) {
             dropAndRecreateCheckConstraint("meals", "meals_category_check",

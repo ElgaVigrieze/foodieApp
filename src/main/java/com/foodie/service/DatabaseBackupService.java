@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+import org.springframework.beans.factory.annotation.Value;
 import javax.sql.DataSource;
 import java.io.IOException;
 import java.nio.file.*;
@@ -26,11 +27,19 @@ public class DatabaseBackupService {
 
     private final DataSource dataSource;
 
+    @Value("${spring.datasource.url:}")
+    private String datasourceUrl;
+
     /**
      * Runs every 4 hours (first backup 1 minute after startup).
      */
     @Scheduled(fixedRate = 4 * 60 * 60 * 1000, initialDelay = 60_000)
     public void backupDatabase() {
+        // H2-only backup - skip on PostgreSQL
+        if (datasourceUrl.contains("postgresql") || datasourceUrl.contains("neon")) {
+            log.debug("Skipping H2 backup - running on PostgreSQL");
+            return;
+        }
         try {
             Path backupDir = Path.of("./data/backups");
             Files.createDirectories(backupDir);

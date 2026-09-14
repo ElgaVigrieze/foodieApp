@@ -7,6 +7,7 @@ import com.foodie.repository.FoodLogRepository;
 import com.foodie.repository.MealRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -63,13 +64,13 @@ public class FoodLogService {
     }
 
     public void updateCaloriesSpent(LocalDate date, BigDecimal caloriesSpent) {
-        // Store on the first entry of the day (or create a placeholder)
         List<FoodLog> entries = findByDate(date);
         if (!entries.isEmpty()) {
             entries.getFirst().setCaloriesSpent(caloriesSpent);
             foodLogRepository.save(entries.getFirst());
         }
     }
+
 
     public BigDecimal getCaloriesSpent(LocalDate date) {
         List<FoodLog> entries = findByDate(date);
