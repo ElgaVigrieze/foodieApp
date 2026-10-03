@@ -111,6 +111,15 @@ public class ShoppingListService {
     }
 
     @Transactional
+    public void updateComment(Long itemId, String comment) {
+        ShoppingListItem item = repository.findById(itemId)
+                .orElseThrow(() -> new IllegalArgumentException("Item not found: " + itemId));
+        // Trim and cap at 50 chars
+        item.setComment(comment != null ? comment.trim().substring(0, Math.min(comment.trim().length(), 50)) : null);
+        repository.save(item);
+    }
+
+    @Transactional
     public void removeItem(Long itemId) {
         repository.deleteById(itemId);
     }

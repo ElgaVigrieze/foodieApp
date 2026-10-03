@@ -187,7 +187,16 @@ public class RecipeScraperService {
                 {"name": "<ingredient name>", "quantity": <number>, "unit": "<g|kg|ml|L|piece>"},
                 ...
               ]
-            }""";
+            }
+
+            Unit conversion rules — apply these BEFORE outputting:
+            - 1 teaspoon (tsp) = 5 ml → use unit "ml"
+            - 1 tablespoon (tbsp) = 15 ml → use unit "ml"
+            - 1 cup = 240 ml → use unit "ml"
+            - Solid/dry ingredients (flour, sugar, salt, spices, cheese, butter, etc.) → convert to grams, use unit "g"
+            - Liquid ingredients (water, milk, oil, cream, broth, etc.) → convert to ml, use unit "ml"
+            - Countable items (eggs, cloves, slices, pieces) → keep as number, use unit "piece"
+            - Never output "tsp", "tbsp", "cup", "oz", "lb" or any other measurement — always convert first.""";
 
     private String buildTextPrompt(String pageText) {
         return "Extract the recipe from the following web page text. " +

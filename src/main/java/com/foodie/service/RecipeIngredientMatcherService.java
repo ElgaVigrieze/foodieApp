@@ -91,6 +91,13 @@ public class RecipeIngredientMatcherService {
         return productService.save(product);
     }
 
+    /**
+     * Expose all household products for the preview page's product picker.
+     */
+    public List<Product> getAllProducts() {
+        return productService.findAll();
+    }
+
     // ── Matching logic ─────────────────────────────────────────────────────
 
     private MatchedIngredient match(RecipeExtract.IngredientLine line, List<Product> products) {

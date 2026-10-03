@@ -100,6 +100,21 @@
                                 </td>
                                 <td class="small" th:text="${item.product.unit.label}"></td>
                                 <td class="small hide-mobile" th:text="'€' + ${#numbers.formatDecimal(item.cost, 1, 2)}"></td>
+                                <!-- Comment icon -->
+                                <td onclick="event.stopPropagation();">
+                                    <button type="button"
+                                            class="btn btn-sm p-0 border-0 comment-btn"
+                                            th:data-item-id="${item.id}"
+                                            th:data-comment="${item.comment}"
+                                            th:data-product="${item.product.name}"
+                                            th:data-week="${weekStart}"
+                                            th:title="${item.comment != null && !item.comment.isEmpty()} ? ${item.comment} : 'Add comment'"
+                                            onclick="openCommentDrawer(this)">
+                                        <i th:class="${item.comment != null && !#strings.isEmpty(item.comment)}
+                                                     ? 'bi bi-chat-text-fill text-primary'
+                                                     : 'bi bi-chat-text text-muted'"></i>
+                                    </button>
+                                </td>
                                 <td>
                                     <form th:action="@{/shopping-list/remove-item}" method="post" class="d-inline"
                                           onclick="event.stopPropagation();">
@@ -158,34 +173,123 @@
     </div>
 </div>
 
+<!-- ── Comment Offcanvas Drawer ─────────────────────────────────────── -->
+<div class="offcanvas offcanvas-bottom" tabindex="-1" id="commentDrawer"
+     style="height:auto; max-height:50vh; border-radius:16px 16px 0 0;">
+    <div class="offcanvas-header pb-1">
+        <h6 class="offcanvas-title">
+            <i class="bi bi-chat-text me-1"></i>
+            <span id="drawerProductName"></span>
+        </h6>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
+    </div>
+    <div class="offcanvas-body pt-1">
+
+        <!-- Owner: editable form -->
+        <form id="commentForm" th:if="${isOwner}"
+              th:action="@{/shopping-list/update-comment}" method="post">
+            <input type="hidden" name="itemId"    id="drawerItemId">
+            <input type="hidden" name="weekStart" id="drawerWeekStart">
+            <div class="mb-3">
+                <input type="text" name="comment" id="drawerCommentInput"
+                       class="form-control" maxlength="50"
+                       placeholder="Add a note… (max 50 chars)">
+                <div class="form-text text-end">
+                    <span id="charCount">0</span>/50
+                </div>
+            </div>
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary flex-grow-1">
+                    <i class="bi bi-check-lg me-1"></i> Save
+                </button>
+                <button type="button" class="btn btn-outline-danger" id="btnClearComment">
+                    <i class="bi bi-trash"></i> Clear
+                </button>
+            </div>
+        </form>
+
+        <!-- Member: read-only -->
+        <div th:unless="${isOwner}">
+            <p id="drawerCommentText" class="mb-0 text-muted fst-italic"></p>
+            <p id="drawerNoComment" class="mb-0 text-muted small d-none">No comment for this item.</p>
+        </div>
+
+    </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-// Click anywhere on a row to toggle checked
 function toggleItemChecked(row, event) {
-    // Don't trigger if clicking on interactive elements
     if (event.target.closest('form') || event.target.closest('button') || event.target.closest('input')) return;
     var itemId = row.getAttribute('data-item-id');
     var form = document.getElementById('toggle-form-' + itemId);
     if (form) form.submit();
 }
 
-// Auto-submit quantity on blur (when user taps away from the field)
 document.querySelectorAll('.qty-form input[name="quantity"]').forEach(function(input) {
     var originalValue = input.value;
     input.addEventListener('blur', function() {
-        if (input.value !== originalValue) {
-            input.closest('form').submit();
-        }
+        if (input.value !== originalValue) input.closest('form').submit();
     });
     input.addEventListener('keydown', function(e) {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            input.blur();
-        }
+        if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
     });
 });
 
-// Share button
+// ── Comment drawer ────────────────────────────────────────────────────────
+var commentDrawerEl = document.getElementById('commentDrawer');
+var commentDrawer   = commentDrawerEl ? new bootstrap.Offcanvas(commentDrawerEl) : null;
+
+function openCommentDrawer(btn) {
+    var itemId  = btn.dataset.itemId;
+    var comment = btn.dataset.comment || '';
+    var product = btn.dataset.product;
+    var week    = btn.dataset.week;
+
+    document.getElementById('drawerProductName').textContent = product;
+
+    var isOwner = !!document.getElementById('commentForm');
+    if (isOwner) {
+        document.getElementById('drawerItemId').value       = itemId;
+        document.getElementById('drawerWeekStart').value    = week;
+        document.getElementById('drawerCommentInput').value = comment;
+        updateCharCount(comment.length);
+    } else {
+        var textEl    = document.getElementById('drawerCommentText');
+        var emptyEl   = document.getElementById('drawerNoComment');
+        if (comment) {
+            textEl.textContent = comment;
+            textEl.classList.remove('d-none');
+            emptyEl.classList.add('d-none');
+        } else {
+            textEl.classList.add('d-none');
+            emptyEl.classList.remove('d-none');
+        }
+    }
+
+    commentDrawer.show();
+}
+
+function updateCharCount(len) {
+    var el = document.getElementById('charCount');
+    if (el) el.textContent = len;
+}
+
+var commentInput = document.getElementById('drawerCommentInput');
+if (commentInput) {
+    commentInput.addEventListener('input', function() { updateCharCount(this.value.length); });
+}
+
+var clearBtn = document.getElementById('btnClearComment');
+if (clearBtn) {
+    clearBtn.addEventListener('click', function() {
+        document.getElementById('drawerCommentInput').value = '';
+        updateCharCount(0);
+        document.getElementById('commentForm').submit();
+    });
+}
+
+// ── Share button ──────────────────────────────────────────────────────────
 document.getElementById('btn-share').addEventListener('click', function() {
     var rows = document.querySelectorAll('table tbody tr:not(.table-secondary)');
     var lines = [];
@@ -193,17 +297,13 @@ document.getElementById('btn-share').addEventListener('click', function() {
         var cells = row.querySelectorAll('td');
         if (cells.length >= 4) {
             var name = cells[1].textContent.trim();
-            var qty = cells[2].querySelector('input[name="quantity"]');
+            var qty  = cells[2].querySelector('input[name="quantity"]');
             var unit = cells[3].textContent.trim();
-            if (name && qty) {
-                lines.push(name + ' ' + qty.value + ' ' + unit);
-            }
+            if (name && qty) lines.push(name + ' ' + qty.value + ' ' + unit);
         }
     });
-
     if (lines.length === 0) { alert('No items to share.'); return; }
     var text = lines.join('\n');
-
     if (navigator.share) {
         navigator.share({ title: 'Shopping List', text: text }).catch(function() { copyToClipboard(text); });
     } else {

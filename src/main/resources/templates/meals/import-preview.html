@@ -15,18 +15,18 @@
                 <h2 class="mb-0"><i class="bi bi-card-checklist"></i> Review Imported Recipe</h2>
             </div>
 
-            <!-- New products banner -->
-            <div th:if="${newProductCount > 0}" class="alert alert-info d-flex align-items-center gap-2">
+            <!-- New products banner (updated dynamically by JS) -->
+            <div id="newProductsBanner" class="alert alert-info d-flex align-items-center gap-2 d-none">
                 <i class="bi bi-plus-circle-fill fs-5"></i>
                 <span>
-                    <strong th:text="${newProductCount}"></strong>
-                    new product<span th:if="${newProductCount > 1}">s</span>
+                    <strong id="newProductCount">0</strong>
+                    new product<span id="newProductPlural">s</span>
                     will be added to your pantry with nutrition data from Open Food Facts.
                     You can update prices and details on the Products page afterwards.
                 </span>
             </div>
 
-            <form th:action="@{/meals/import/confirm}" method="post">
+            <form th:action="@{/meals/import/confirm}" method="post" id="confirmForm">
 
                 <!-- ── Meal details ──────────────────────────────────────── -->
                 <div class="card mb-3">
@@ -57,7 +57,6 @@
                             </div>
                         </div>
 
-                        <!-- Recipe source URL (hidden passthrough) -->
                         <input type="hidden" name="recipeUrl" th:value="${recipeUrl}">
 
                         <div>
@@ -75,53 +74,73 @@
 
                 <!-- ── Ingredients ───────────────────────────────────────── -->
                 <div class="card mb-4">
-                    <div class="card-header fw-semibold">
-                        <i class="bi bi-basket me-1"></i> Ingredients
-                        <span class="badge bg-secondary ms-1" th:text="${matched.size()}"></span>
+                    <div class="card-header fw-semibold d-flex justify-content-between align-items-center">
+                        <span><i class="bi bi-basket me-1"></i> Ingredients</span>
+                        <span class="badge bg-secondary" id="ingredientCount" th:text="${matched.size()}"></span>
                     </div>
                     <div class="card-body p-0">
-                        <table class="table table-hover mb-0">
+                        <table class="table table-hover mb-0" id="ingredientsTable">
                             <thead class="table-light">
                                 <tr>
-                                    <th style="width:30%">AI Extracted</th>
-                                    <th style="width:30%">Matched Product</th>
-                                    <th style="width:15%">Quantity</th>
-                                    <th style="width:15%">Unit</th>
+                                    <th style="width:22%">AI Extracted</th>
+                                    <th style="width:38%">Product</th>
+                                    <th style="width:18%">Quantity</th>
+                                    <th style="width:12%">Unit</th>
                                     <th style="width:10%"></th>
                                 </tr>
                             </thead>
-                            <tbody>
-                                <tr th:each="mi, stat : ${matched}"
-                                    th:classappend="${mi.isNew()} ? 'table-warning' : ''">
+                            <tbody id="ingredientsTbody">
+                                <tr th:each="mi, stat : ${matched}" class="ingredient-row"
+                                    th:classappend="${mi.isNew()} ? ' table-warning' : ''">
 
-                                    <!-- AI name -->
+                                    <!-- AI extracted name (read-only hint) -->
                                     <td class="align-middle small text-muted"
                                         th:text="${mi.line().name()}"></td>
 
-                                    <!-- Product name (editable for new) -->
+                                    <!-- Product picker — always a searchable select -->
                                     <td class="align-middle">
-                                        <!-- Hidden fields always sent -->
-                                        <input type="hidden" name="productIds"
-                                               th:value="${mi.isNew() ? 0 : mi.product().id}">
-                                        <input type="hidden" name="productUnits"
-                                               th:value="${mi.product().unit.name()}">
-
-                                        <div th:if="${mi.isNew()}" class="d-flex align-items-center gap-1">
-                                            <span class="badge bg-warning text-dark me-1" title="New product">
-                                                <i class="bi bi-plus"></i> New
-                                            </span>
-                                            <input type="text" name="productNames"
-                                                   class="form-control form-control-sm"
-                                                   th:value="${mi.product().name}" required>
-                                        </div>
-                                        <div th:if="${!mi.isNew()}" class="d-flex align-items-center gap-1">
-                                            <!-- Existing product — name is display only -->
-                                            <input type="hidden" name="productNames"
-                                                   th:value="${mi.product().name}">
-                                            <span th:text="${mi.product().name}"></span>
-                                            <span class="badge bg-light text-secondary border ms-1 small"
-                                                  th:text="${mi.product().unit.label}"></span>
-                                        </div>
+                                        <!--
+                                            productIds  → existing product id, or 0 for "create new"
+                                            productNames → used only when productIds=0 (new product name)
+                                            productUnits → used only when productIds=0 (new product unit)
+                                        -->
+                                        <select name="productIds"
+                                                class="form-select form-select-sm product-select"
+                                                th:data-current-id="${mi.isNew() ? 0 : mi.product().id}"
+                                                th:data-new-name="${mi.product().name}"
+                                                th:data-new-unit="${mi.product().unit.name()}"
+                                                required>
+                                            <!-- "Create new" option always present -->
+                                            <option value="0"
+                                                    th:selected="${mi.isNew()}"
+                                                    th:text="'✚ Create: ' + ${mi.product().name}">
+                                            </option>
+                                            <!-- All existing household products -->
+                                            <option th:each="p : ${allProducts}"
+                                                    th:value="${p.id}"
+                                                    th:text="${p.name + ' (' + p.unit.label + ')'}"
+                                                    th:attr="data-unit=${p.unit.name()}"
+                                                    th:selected="${!mi.isNew() && p.id == mi.product().id}">
+                                            </option>
+                                        </select>
+                                        <!-- Name input shown only when "Create new" is selected -->
+                                        <input type="text" name="productNames"
+                                               class="form-control form-control-sm mt-1 new-product-name"
+                                               th:value="${mi.product().name}"
+                                               placeholder="New product name"
+                                               th:classappend="${mi.isNew()} ? '' : ' d-none'"
+                                               required>
+                                        <!-- Unit select shown only when "Create new" is selected -->
+                                        <select name="productUnits"
+                                                class="form-select form-select-sm mt-1 new-product-unit"
+                                                th:classappend="${mi.isNew()} ? '' : ' d-none'">
+                                            <option value="KG"
+                                                    th:selected="${mi.product().unit.name() == 'KG'}">kg</option>
+                                            <option value="LITER"
+                                                    th:selected="${mi.product().unit.name() == 'LITER'}">L</option>
+                                            <option value="PIECE"
+                                                    th:selected="${mi.product().unit.name() == 'PIECE'}">piece</option>
+                                        </select>
                                     </td>
 
                                     <!-- Quantity -->
@@ -132,15 +151,12 @@
                                                th:value="${mi.quantity()}" required>
                                     </td>
 
-                                    <!-- Unit label -->
-                                    <td class="align-middle small text-muted">
+                                    <!-- Unit label (updates when product changes) -->
+                                    <td class="align-middle small text-muted unit-label">
                                         <span th:text="${mi.product().unit.label}"></span>
-                                        <span th:if="${mi.isNew()}" class="d-block text-warning small">
-                                            (new — edit after save)
-                                        </span>
                                     </td>
 
-                                    <!-- Remove row button -->
+                                    <!-- Remove -->
                                     <td class="align-middle text-end">
                                         <button type="button" class="btn btn-sm btn-outline-danger btn-remove-row"
                                                 title="Remove ingredient">
@@ -149,8 +165,7 @@
                                     </td>
                                 </tr>
 
-                                <!-- Empty state -->
-                                <tr th:if="${matched.isEmpty()}">
+                                <tr id="emptyRow" th:if="${matched.isEmpty()}">
                                     <td colspan="5" class="text-center text-muted py-3">
                                         No ingredients extracted. You can add them manually after saving.
                                     </td>
@@ -178,17 +193,79 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-    // Remove ingredient row and keep form consistent
-    document.querySelectorAll('.btn-remove-row').forEach(function (btn) {
-        btn.addEventListener('click', function () {
-            const row = btn.closest('tr');
-            // Don't remove if it's the last row
-            const tbody = row.closest('tbody');
-            if (tbody.querySelectorAll('tr:not(.empty-row)').length > 1) {
+(function () {
+    // ── Unit label map (from server-rendered options' data-unit attrs) ──────
+    const unitLabels = { KG: 'kg', LITER: 'L', PIECE: 'pc' };
+
+    function updateRow(row) {
+        const select   = row.querySelector('.product-select');
+        const nameInput = row.querySelector('.new-product-name');
+        const unitSelect = row.querySelector('.new-product-unit');
+        const unitLabel = row.querySelector('.unit-label span');
+        const isNew    = select.value === '0';
+
+        // Show/hide new-product fields
+        nameInput.classList.toggle('d-none', !isNew);
+        nameInput.required = isNew;
+        unitSelect.classList.toggle('d-none', !isNew);
+
+        // Update unit label
+        if (isNew) {
+            unitLabel.textContent = unitLabels[unitSelect.value] || '';
+            row.classList.add('table-warning');
+        } else {
+            const selectedOpt = select.options[select.selectedIndex];
+            const unit = selectedOpt.dataset.unit || 'KG';
+            unitLabel.textContent = unitLabels[unit] || '';
+            row.classList.remove('table-warning');
+        }
+
+        updateBanner();
+    }
+
+    function updateBanner() {
+        const newCount = document.querySelectorAll('.product-select').length
+            ? [...document.querySelectorAll('.product-select')].filter(s => s.value === '0').length
+            : 0;
+        const banner = document.getElementById('newProductsBanner');
+        document.getElementById('newProductCount').textContent = newCount;
+        document.getElementById('newProductPlural').textContent = newCount === 1 ? '' : 's';
+        banner.classList.toggle('d-none', newCount === 0);
+    }
+
+    function updateIngredientCount() {
+        const rows = document.querySelectorAll('#ingredientsTbody .ingredient-row');
+        document.getElementById('ingredientCount').textContent = rows.length;
+    }
+
+    function attachRowHandlers(row) {
+        // Product select change
+        row.querySelector('.product-select').addEventListener('change', () => updateRow(row));
+
+        // New-product unit change → update label
+        row.querySelector('.new-product-unit').addEventListener('change', () => updateRow(row));
+
+        // Remove row
+        row.querySelector('.btn-remove-row').addEventListener('click', function () {
+            const tbody = document.getElementById('ingredientsTbody');
+            const rows = tbody.querySelectorAll('.ingredient-row');
+            if (rows.length > 1) {
                 row.remove();
+                updateBanner();
+                updateIngredientCount();
             }
         });
+    }
+
+    // Attach to all server-rendered rows and run initial state
+    document.querySelectorAll('#ingredientsTbody .ingredient-row').forEach(row => {
+        attachRowHandlers(row);
+        updateRow(row);  // set correct initial visibility
     });
+
+    updateBanner();
+    updateIngredientCount();
+})();
 </script>
 </body>
 </html>

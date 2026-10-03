@@ -192,6 +192,7 @@ public class RecipeImportController {
         model.addAttribute("matched",    matched);
         model.addAttribute("recipeUrl",  recipeUrl != null ? recipeUrl : "");
         model.addAttribute("categories", MealCategory.values());
+        model.addAttribute("allProducts", matcherService.getAllProducts());
 
         // Count new products so the UI can warn the user
         long newCount = matched.stream().filter(RecipeIngredientMatcherService.MatchedIngredient::isNew).count();

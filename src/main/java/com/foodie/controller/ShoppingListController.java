@@ -2,6 +2,7 @@ package com.foodie.controller;
 
 import com.foodie.model.MealPlan;
 import com.foodie.model.ShoppingListItem;
+import com.foodie.service.CurrentUserService;
 import com.foodie.service.MealPlanService;
 import com.foodie.service.ProductService;
 import com.foodie.service.ShoppingListService;
@@ -26,6 +27,7 @@ public class ShoppingListController {
     private final ShoppingListService shoppingListService;
     private final MealPlanService mealPlanService;
     private final ProductService productService;
+    private final CurrentUserService currentUserService;
 
     @GetMapping
     public String show(@RequestParam(required = false)
@@ -42,6 +44,7 @@ public class ShoppingListController {
         model.addAttribute("totalCost", shoppingListService.getTotalCost(items));
         model.addAttribute("products", productService.findAll());
         model.addAttribute("currentWeekStart", LocalDate.now().with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)));
+        model.addAttribute("isOwner", currentUserService.isOwner());
         return "shopping-list/view";
     }
 
@@ -77,6 +80,14 @@ public class ShoppingListController {
                           RedirectAttributes redirectAttributes) {
         shoppingListService.addItem(weekStart, productService.findById(productId), quantity);
         redirectAttributes.addFlashAttribute("success", "Item added!");
+        return "redirect:/shopping-list?week=" + weekStart;
+    }
+
+    @PostMapping("/update-comment")
+    public String updateComment(@RequestParam Long itemId,
+                                @RequestParam(required = false) String comment,
+                                @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate weekStart) {
+        shoppingListService.updateComment(itemId, comment);
         return "redirect:/shopping-list?week=" + weekStart;
     }
 

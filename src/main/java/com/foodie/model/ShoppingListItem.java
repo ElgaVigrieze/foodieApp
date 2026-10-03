@@ -45,6 +45,10 @@ public class ShoppingListItem {
     @Builder.Default
     private boolean checked = false;
 
+    /** Optional short comment for this item (max 50 chars). */
+    @Column(length = 50)
+    private String comment;
+
     @Transient
     public BigDecimal getCost() {
         return adjustedQuantity.multiply(product.getPricePerUnit());
