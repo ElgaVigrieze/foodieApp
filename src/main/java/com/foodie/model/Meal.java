@@ -43,6 +43,7 @@ public class Meal {
     private String recipe;
 
     /** Optional link to the original recipe source (YouTube, blog, etc.). */
+    @Column(length = 1000)
     private String recipeUrl;
 
     /** Whether this meal is marked as a favorite. */
