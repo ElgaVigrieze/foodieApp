@@ -158,15 +158,13 @@ docker run -p 8080:8080 \
 
 ---
 
+## 🎬 Demo
+
+![FoodieApp Demo](docs/images/demo.gif)
+
 ## 📸 Screenshots
 
-<!-- Add your screenshots here -->
-*To add screenshots: save images to `docs/images/` and reference them like this:*
-
-```markdown
-![Meal Planning](docs/images/meal-planning.png)
-![Photo Analysis](docs/images/photo-analysis.png)
-```
+*Add additional screenshots to `docs/images/` and reference them here.*
 
 ---
 
