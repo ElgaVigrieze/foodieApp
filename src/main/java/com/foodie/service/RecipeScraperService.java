@@ -83,24 +83,27 @@ public class RecipeScraperService {
     /**
      * Fetch a recipe from a URL (blog, YouTube, Instagram reel page, etc.)
      * and extract structured data via the Cloudflare text LLM.
+     *
+     * Strategy:
+     * 1. Try to fetch and scrape the page HTML
+     * 2. If scraping fails (bot protection, 403, etc.) — fall back to asking
+     *    the AI to use its training knowledge about the URL directly
      */
     public RecipeExtract extractFromUrl(String url) {
         log.info("Extracting recipe from URL: {}", url);
 
-        // 1. Fetch the page HTML and strip it down to readable text
         String pageText = fetchPageText(url);
+
+        String prompt;
         if (pageText == null || pageText.isBlank()) {
-            log.warn("Could not fetch page text for URL: {}", url);
-            return fallbackExtract(url);
+            // Scraping failed — ask the AI to recall the recipe from its training data
+            log.info("Page scraping failed for {}, asking AI to recall from training data", url);
+            prompt = buildUrlFallbackPrompt(url);
+        } else {
+            if (pageText.length() > 8_000) pageText = pageText.substring(0, 8_000);
+            prompt = buildTextPrompt(pageText);
         }
 
-        // Truncate to ~8 000 chars so it fits comfortably in the context window
-        if (pageText.length() > 8_000) {
-            pageText = pageText.substring(0, 8_000);
-        }
-
-        // 2. Send to Cloudflare LLM with a strict structured prompt
-        String prompt = buildTextPrompt(pageText);
         String aiResponse = callTextModel(prompt);
         if (aiResponse == null) return fallbackExtract(url);
 
@@ -205,6 +208,14 @@ public class RecipeScraperService {
                "Respond ONLY with valid JSON in this exact format (no markdown, no explanation):\n" +
                JSON_FORMAT_INSTRUCTIONS +
                "\n\nPage text:\n" + pageText;
+    }
+
+    private String buildUrlFallbackPrompt(String url) {
+        return "The following URL points to a recipe page that could not be scraped. " +
+               "Use your training knowledge to recall the recipe from this URL and respond " +
+               "ONLY with valid JSON in this exact format (no markdown, no explanation):\n" +
+               JSON_FORMAT_INSTRUCTIONS +
+               "\n\nRecipe URL: " + url;
     }
 
     private String callTextModel(String prompt) {
