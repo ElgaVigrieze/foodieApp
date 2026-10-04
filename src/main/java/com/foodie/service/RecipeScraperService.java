@@ -184,7 +184,7 @@ public class RecipeScraperService {
 
     private static final String JSON_FORMAT_INSTRUCTIONS = """
             {
-              "name": "<meal name>",
+              "name": "<the DISH title, e.g. 'Panna Cotta' or 'Chicken Tikka Masala' — NOT an ingredient name>",
               "category": "<one of: MAIN_COURSE, SOUP, SALAD, SNACK, DESSERT, DRINK, SAUCE, SIDE>",
               "servings": <number>,
               "instructions": "<preparation steps as plain text>",
@@ -194,7 +194,9 @@ public class RecipeScraperService {
               ]
             }
 
-            Unit conversion rules — apply these BEFORE outputting:
+            Important rules:
+            - "name" must be the recipe/dish title only — never an ingredient
+            - Unit conversion rules — apply these BEFORE outputting:
             - 1 teaspoon (tsp) = 5 ml → use unit "ml"
             - 1 tablespoon (tbsp) = 15 ml → use unit "ml"
             - 1 cup = 240 ml → use unit "ml"
