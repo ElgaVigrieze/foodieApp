@@ -256,24 +256,44 @@ public class RecipeScraperService {
         }
     }
 
-    /** Pull the inner "response" string out of {"result":{"response":"..."},...} */
+    /** Pull the inner response text out of the Cloudflare API envelope.
+     *  Handles two formats:
+     *  1. {"result":{"response":"..."}} — Workers AI text format
+     *  2. {"result":{"choices":[{"message":{"content":"..."}}]}} — OpenAI-compatible format
+     */
     private String extractResponseText(String json) {
         if (json == null) return null;
 
-        // DOTALL so the match works even if Cloudflare's envelope has literal newlines
-        Pattern p = Pattern.compile("\"response\"\\s*:\\s*\"((?:[^\"\\\\]|\\\\.)*?)\"", Pattern.DOTALL);
-        Matcher m = p.matcher(json);
-        if (!m.find()) {
-            // Fallback: some Cloudflare models stream back the content directly
-            // without a nested "response" key — try the whole body as-is
-            log.warn("No 'response' field in AI output, trying raw body. Output: {}", json);
-            return json;
+        // Format 1: choices[].message.content (OpenAI-compatible — what llama-3.3 returns)
+        Pattern choicesPattern = Pattern.compile(
+            "\"content\"\\s*:\\s*\"((?:[^\"\\\\]|\\\\.)*)\"", Pattern.DOTALL);
+        Matcher choicesMatcher = choicesPattern.matcher(json);
+        if (choicesMatcher.find()) {
+            String content = choicesMatcher.group(1)
+                    .replace("\\n", "\n")
+                    .replace("\\\"", "\"")
+                    .replace("\\/", "/")
+                    .replace("\\\\", "\\");
+            log.debug("Extracted response via choices.content");
+            return content;
         }
-        return m.group(1)
-                .replace("\\n", "\n")
-                .replace("\\\"", "\"")
-                .replace("\\/", "/")
-                .replace("\\\\", "\\");
+
+        // Format 2: result.response (older Workers AI format)
+        Pattern responsePattern = Pattern.compile(
+            "\"response\"\\s*:\\s*\"((?:[^\"\\\\]|\\\\.)*?)\"", Pattern.DOTALL);
+        Matcher responseMatcher = responsePattern.matcher(json);
+        if (responseMatcher.find()) {
+            String content = responseMatcher.group(1)
+                    .replace("\\n", "\n")
+                    .replace("\\\"", "\"")
+                    .replace("\\/", "/")
+                    .replace("\\\\", "\\");
+            log.debug("Extracted response via result.response");
+            return content;
+        }
+
+        log.warn("Could not extract response text from AI output: {}", json);
+        return null;
     }
 
     // ── JSON parsing ───────────────────────────────────────────────────────
