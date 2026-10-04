@@ -117,7 +117,7 @@
                                             <i class="bi bi-archive"></i>
                                         </button>
                                     </form>
-                                    <form th:action="@{/meals/{id}/delete(id=${meal.id})}" method="post" class="d-inline" onsubmit="return confirm('Delete this meal?')">
+                                    <form th:action="@{/meals/{id}/delete(id=${meal.id})}" method="post" class="d-inline" onclick="event.stopPropagation();" onsubmit="event.stopPropagation(); return confirm('Delete this meal?')">
                                         <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
                                     </form>
                                 </div>

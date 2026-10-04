@@ -90,8 +90,14 @@ public class MealController {
 
     @PostMapping("/{id}/delete")
     public String delete(@PathVariable Long id, RedirectAttributes redirectAttributes) {
-        mealService.deleteById(id);
-        redirectAttributes.addFlashAttribute("success", "Meal deleted.");
+        try {
+            mealService.deleteById(id);
+            redirectAttributes.addFlashAttribute("success", "Meal deleted.");
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("error",
+                    "Cannot delete this meal — it is still referenced by a food log or meal plan. " +
+                    "Archive it instead to hide it from lists.");
+        }
         return "redirect:/meals";
     }
 
