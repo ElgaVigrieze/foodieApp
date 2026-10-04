@@ -163,8 +163,11 @@ docker run -p 8080:8080 \
 ![FoodieApp Demo](docs/images/demo.gif)
 
 ## 📸 Screenshots
-
-*Add additional screenshots to `docs/images/` and reference them here.*
+![budget.png](docs/images/budget.png)
+![generate meal.png](docs/images/generate%20meal.png)
+![meal plan.png](docs/images/meal%20plan.png)
+![shop list responsive.png](docs/images/shop%20list%20responsive.png)
+![voice match.png](docs/images/voice%20match.png)
 
 ---
 
