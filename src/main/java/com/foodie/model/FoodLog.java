@@ -72,7 +72,7 @@ public class FoodLog {
 
     @Transient
     public BigDecimal getCalories() {
-        if (directCalories != null) return directCalories;
+        if (directCalories != null) return directCalories.multiply(servingsConsumed != null ? servingsConsumed : BigDecimal.ONE);
         if (meal != null) return meal.getCaloriesPerServing().multiply(servingsConsumed);
         if (product != null) return getNutrientForProduct(product.getCalories());
         return BigDecimal.ZERO;
@@ -80,7 +80,7 @@ public class FoodLog {
 
     @Transient
     public BigDecimal getProtein() {
-        if (directProtein != null) return directProtein;
+        if (directProtein != null) return directProtein.multiply(servingsConsumed != null ? servingsConsumed : BigDecimal.ONE);
         if (meal != null) return meal.getProteinPerServing().multiply(servingsConsumed);
         if (product != null) return getNutrientForProduct(product.getProtein());
         return BigDecimal.ZERO;
@@ -88,7 +88,7 @@ public class FoodLog {
 
     @Transient
     public BigDecimal getCarbs() {
-        if (directCarbs != null) return directCarbs;
+        if (directCarbs != null) return directCarbs.multiply(servingsConsumed != null ? servingsConsumed : BigDecimal.ONE);
         if (meal != null) return meal.getCarbsPerServing().multiply(servingsConsumed);
         if (product != null) return getNutrientForProduct(product.getCarbs());
         return BigDecimal.ZERO;
@@ -96,7 +96,7 @@ public class FoodLog {
 
     @Transient
     public BigDecimal getFat() {
-        if (directFat != null) return directFat;
+        if (directFat != null) return directFat.multiply(servingsConsumed != null ? servingsConsumed : BigDecimal.ONE);
         if (meal != null) return meal.getFatPerServing().multiply(servingsConsumed);
         if (product != null) return getNutrientForProduct(product.getFat());
         return BigDecimal.ZERO;
@@ -104,7 +104,7 @@ public class FoodLog {
 
     @Transient
     public BigDecimal getFiber() {
-        if (directFiber != null) return directFiber;
+        if (directFiber != null) return directFiber.multiply(servingsConsumed != null ? servingsConsumed : BigDecimal.ONE);
         if (meal != null) return meal.getFiberPerServing().multiply(servingsConsumed);
         if (product != null) return getNutrientForProduct(product.getFiber());
         return BigDecimal.ZERO;
