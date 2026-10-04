@@ -140,15 +140,17 @@ public class RecipeScraperService {
         try {
             String html = restClient.get()
                     .uri(url)
-                    .header("User-Agent", "Mozilla/5.0 (compatible; Foodie-Bot/1.0)")
-                    .header("Accept", "text/html,application/xhtml+xml")
+                    .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
+                    .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
+                    .header("Accept-Language", "en-US,en;q=0.9")
+                    .header("Accept-Encoding", "identity")
                     .retrieve()
                     .body(String.class);
 
             if (html == null) return null;
             return stripHtml(html);
         } catch (Exception e) {
-            log.warn("Failed to fetch URL {}: {}", url, e.getMessage());
+            log.warn("Failed to fetch URL {}: {} — {}", url, e.getClass().getSimpleName(), e.getMessage());
             return null;
         }
     }
