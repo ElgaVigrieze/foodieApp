@@ -97,6 +97,14 @@ public class FoodLogController {
         return "redirect:/log?date=" + date;
     }
 
+    @PostMapping("/{id}/scale-photo")
+    public String scalePhoto(@PathVariable Long id,
+                             @RequestParam BigDecimal scalePct,
+                             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        foodLogService.scalePhotoEntry(id, scalePct);
+        return "redirect:/log?date=" + date;
+    }
+
     @PostMapping("/{id}/delete")
     public String deleteEntry(@PathVariable Long id,
                               @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,

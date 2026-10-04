@@ -90,6 +90,12 @@
                                         <input type="number" name="quantity" class="form-control form-control-sm d-inline" style="width:55px;" step="0.01" min="0.01" th:value="${entry.productQuantity}" onchange="this.form.submit()">
                                         <span class="small" th:text="${entry.product.unit.label}"></span>
                                     </form>
+                                    <form th:if="${entry.directCalories != null}" th:action="@{/log/{id}/scale-photo(id=${entry.id})}" method="post" class="d-inline d-flex align-items-center gap-1">
+                                        <input type="hidden" name="date" th:value="${selectedDate}">
+                                        <input type="number" name="scalePct" class="form-control form-control-sm" style="width:65px;" step="5" min="10" max="500" value="100" title="Scale %">
+                                        <span class="text-muted small">%</span>
+                                        <button type="submit" class="btn btn-sm btn-outline-secondary p-0 px-1" title="Apply scale">↻</button>
+                                    </form>
                                 </td>
                                 <td class="small text-danger" th:text="${#numbers.formatDecimal(entry.calories, 1, 0)}"></td>
                                 <td class="small text-primary" th:text="${#numbers.formatDecimal(entry.protein, 1, 0)}"></td>
@@ -126,6 +132,12 @@
                                         <input type="hidden" name="date" th:value="${selectedDate}">
                                         <input type="number" name="quantity" class="form-control form-control-sm d-inline" style="width:55px;" step="0.01" min="0.01" th:value="${entry.productQuantity}" onchange="this.form.submit()">
                                         <span class="small" th:text="${entry.product.unit.label}"></span>
+                                    </form>
+                                    <form th:if="${entry.directCalories != null}" th:action="@{/log/{id}/scale-photo(id=${entry.id})}" method="post" class="d-inline d-flex align-items-center gap-1">
+                                        <input type="hidden" name="date" th:value="${selectedDate}">
+                                        <input type="number" name="scalePct" class="form-control form-control-sm" style="width:65px;" step="5" min="10" max="500" value="100" title="Scale %">
+                                        <span class="text-muted small">%</span>
+                                        <button type="submit" class="btn btn-sm btn-outline-secondary p-0 px-1" title="Apply scale">↻</button>
                                     </form>
                                 </td>
                                 <td class="small text-danger" th:text="${#numbers.formatDecimal(entry.calories, 1, 0)}"></td>

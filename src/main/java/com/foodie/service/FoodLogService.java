@@ -102,6 +102,21 @@ public class FoodLogService {
         entry.setServingsConsumed(servings);
         foodLogRepository.save(entry);
     }
+    @Transactional
+    public void scalePhotoEntry(Long id, BigDecimal scalePct) {
+        FoodLog entry = foodLogRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Entry not found: " + id));
+        if (entry.getDirectCalories() == null) return; // not a photo entry
+
+        BigDecimal factor = scalePct.divide(BigDecimal.valueOf(100), 4, java.math.RoundingMode.HALF_UP);
+        entry.setDirectCalories(entry.getDirectCalories().multiply(factor).setScale(1, java.math.RoundingMode.HALF_UP));
+        if (entry.getDirectProtein()  != null) entry.setDirectProtein(entry.getDirectProtein().multiply(factor).setScale(1, java.math.RoundingMode.HALF_UP));
+        if (entry.getDirectCarbs()    != null) entry.setDirectCarbs(entry.getDirectCarbs().multiply(factor).setScale(1, java.math.RoundingMode.HALF_UP));
+        if (entry.getDirectFat()      != null) entry.setDirectFat(entry.getDirectFat().multiply(factor).setScale(1, java.math.RoundingMode.HALF_UP));
+        if (entry.getDirectFiber()    != null) entry.setDirectFiber(entry.getDirectFiber().multiply(factor).setScale(1, java.math.RoundingMode.HALF_UP));
+        foodLogRepository.save(entry);
+    }
+
     public void deleteEntry(Long id) {
         foodLogRepository.deleteById(id);
     }
