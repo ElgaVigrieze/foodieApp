@@ -8,7 +8,7 @@ spring:
     password: ${DATABASE_PASSWORD:}
   h2:
     console:
-      enabled: ${H2_CONSOLE_ENABLED:true}
+      enabled: ${H2_CONSOLE_ENABLED:false}
       path: /h2-console
   jpa:
     database-platform: ${JPA_DIALECT:org.hibernate.dialect.H2Dialect}
@@ -25,8 +25,8 @@ spring:
       client:
         registration:
           google:
-            client-id: ${GOOGLE_CLIENT_ID:444075693846-lsrjv7upe9d37fmesmd668g5u0l81hl4.apps.googleusercontent.com}
-            client-secret: ${GOOGLE_CLIENT_SECRET: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}
+            client-id: ${GOOGLE_CLIENT_ID}
+            client-secret: ${GOOGLE_CLIENT_SECRET}
             scope: openid, profile, email
 
 server:
@@ -41,8 +41,8 @@ spring.servlet.multipart:
 # Proxy config for external API calls (Open Food Facts)
 app:
   cloudflare:
-    account-id: ${CLOUDFLARE_ACCOUNT_ID:507ac87d769dd2286a403c698af771b3}
-    api-token: ${CLOUDFLARE_API_TOKEN:cfut_mXSke9LAlqWziygC0wlSRsaKEO1gV2qcwCRkFhua49697c42}
+    account-id: ${CLOUDFLARE_ACCOUNT_ID:}
+    api-token: ${CLOUDFLARE_API_TOKEN:}
   proxy:
     host: ${PROXY_HOST:}
     port: ${PROXY_PORT:0}

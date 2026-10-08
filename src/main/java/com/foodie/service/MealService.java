@@ -21,6 +21,33 @@ public class MealService {
     private final ProductRepository productRepository;
     private final CurrentUserService currentUserService;
 
+    /**
+     * Verifies the current user can access/modify the given meal.
+     * @throws SecurityException if the user doesn't have access
+     */
+    private Meal findByIdAndVerifyAccess(Long id) {
+        Meal meal = mealRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Meal not found: " + id));
+        
+        AppUser currentUser = currentUserService.getCurrentUser();
+        if (currentUser == null) {
+            throw new SecurityException("Not authenticated");
+        }
+        
+        // Allow access if user owns the meal OR is in the same household
+        boolean isOwner = meal.getOwner() != null && 
+                          meal.getOwner().getId().equals(currentUser.getId());
+        boolean isSameHousehold = meal.getHousehold() != null && 
+                                  currentUser.getHousehold() != null &&
+                                  meal.getHousehold().getId().equals(currentUser.getHousehold().getId());
+        
+        if (!isOwner && !isSameHousehold) {
+            throw new SecurityException("Not authorized to access this meal");
+        }
+        
+        return meal;
+    }
+
     public List<Meal> findAll() {
         Long hhId = currentUserService.getCurrentHouseholdId();
         if (hhId != null) {
@@ -53,8 +80,7 @@ public class MealService {
     }
 
     public Meal findById(Long id) {
-        return mealRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Meal not found: " + id));
+        return findByIdAndVerifyAccess(id);
     }
 
     @Transactional
@@ -117,19 +143,20 @@ public class MealService {
     }
 
     public void deleteById(Long id) {
+        findByIdAndVerifyAccess(id);  // Verify access before deleting
         mealRepository.deleteById(id);
     }
 
     @Transactional
     public void toggleFavorite(Long id) {
-        Meal meal = findById(id);
+        Meal meal = findByIdAndVerifyAccess(id);
         meal.setFavorite(!meal.isFavorite());
         mealRepository.save(meal);
     }
 
     @Transactional
     public void toggleArchive(Long id) {
-        Meal meal = findById(id);
+        Meal meal = findByIdAndVerifyAccess(id);
         meal.setArchived(!meal.isArchived());
         // Remove from favorites when archiving
         if (meal.isArchived()) meal.setFavorite(false);

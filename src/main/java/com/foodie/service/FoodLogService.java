@@ -25,6 +25,33 @@ public class FoodLogService {
     private final com.foodie.repository.ProductRepository productRepository;
     private final CurrentUserService currentUserService;
 
+    /**
+     * Verifies the current user owns the given food log entry.
+     * @throws SecurityException if the user doesn't own the entry
+     */
+    private FoodLog findByIdAndVerifyOwnership(Long id) {
+        FoodLog entry = foodLogRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Entry not found: " + id));
+        
+        AppUser currentUser = currentUserService.getCurrentUser();
+        if (currentUser == null) {
+            throw new SecurityException("Not authenticated");
+        }
+        
+        // Allow access if user owns the entry OR is in the same household
+        boolean isOwner = entry.getOwner() != null && 
+                          entry.getOwner().getId().equals(currentUser.getId());
+        boolean isSameHousehold = entry.getHousehold() != null && 
+                                  currentUser.getHousehold() != null &&
+                                  entry.getHousehold().getId().equals(currentUser.getHousehold().getId());
+        
+        if (!isOwner && !isSameHousehold) {
+            throw new SecurityException("Not authorized to access this entry");
+        }
+        
+        return entry;
+    }
+
     public List<FoodLog> findByDate(LocalDate date) {
         AppUser user = currentUserService.getCurrentUser();
         if (user != null) {
@@ -91,21 +118,18 @@ public class FoodLogService {
     
     
     public void updateProductQuantity(Long id, BigDecimal quantity) {
-        FoodLog entry = foodLogRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Entry not found: " + id));
+        FoodLog entry = findByIdAndVerifyOwnership(id);
         entry.setProductQuantity(quantity);
         foodLogRepository.save(entry);
     }
     public void updateServings(Long id, BigDecimal servings) {
-        FoodLog entry = foodLogRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Entry not found: " + id));
+        FoodLog entry = findByIdAndVerifyOwnership(id);
         entry.setServingsConsumed(servings);
         foodLogRepository.save(entry);
     }
     @Transactional
     public void scalePhotoEntry(Long id, BigDecimal scalePct) {
-        FoodLog entry = foodLogRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Entry not found: " + id));
+        FoodLog entry = findByIdAndVerifyOwnership(id);
         if (entry.getDirectCalories() == null) return; // not a photo entry
 
         BigDecimal factor = scalePct.divide(BigDecimal.valueOf(100), 4, java.math.RoundingMode.HALF_UP);
@@ -118,6 +142,7 @@ public class FoodLogService {
     }
 
     public void deleteEntry(Long id) {
+        findByIdAndVerifyOwnership(id);  // Verify ownership before deleting
         foodLogRepository.deleteById(id);
     }
 

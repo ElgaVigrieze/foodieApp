@@ -10,12 +10,15 @@ import org.springframework.web.client.RestClient;
 import javax.net.ssl.*;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.Proxy;
+import java.net.URI;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -78,6 +81,120 @@ public class RecipeScraperService {
                 && apiToken != null && !apiToken.isBlank();
     }
 
+    // ── URL Validation (SSRF Protection) ───────────────────────────────────
+
+    /**
+     * Blocked hosts/patterns for SSRF protection.
+     */
+    private static final Set<String> BLOCKED_HOSTS = Set.of(
+            "localhost", "127.0.0.1", "0.0.0.0", "[::1]", "metadata.google.internal"
+    );
+
+    /**
+     * Validates a URL to prevent SSRF attacks.
+     * Blocks: private IPs, localhost, cloud metadata endpoints, non-HTTP(S) schemes.
+     *
+     * @throws IllegalArgumentException if the URL is not allowed
+     */
+    private void validateUrl(String url) {
+        if (url == null || url.isBlank()) {
+            throw new IllegalArgumentException("URL cannot be empty");
+        }
+
+        URI uri;
+        try {
+            uri = new URI(url);
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Invalid URL format: " + e.getMessage());
+        }
+
+        // Only allow HTTP and HTTPS
+        String scheme = uri.getScheme();
+        if (scheme == null || (!scheme.equalsIgnoreCase("http") && !scheme.equalsIgnoreCase("https"))) {
+            throw new IllegalArgumentException("Only HTTP and HTTPS URLs are allowed");
+        }
+
+        String host = uri.getHost();
+        if (host == null || host.isBlank()) {
+            throw new IllegalArgumentException("URL must have a valid host");
+        }
+
+        // Block known dangerous hosts
+        String hostLower = host.toLowerCase();
+        if (BLOCKED_HOSTS.contains(hostLower)) {
+            throw new IllegalArgumentException("Access to " + host + " is not allowed");
+        }
+
+        // Block cloud metadata endpoints (AWS, GCP, Azure, etc.)
+        if (hostLower.equals("169.254.169.254") || 
+            hostLower.endsWith(".internal") ||
+            hostLower.startsWith("metadata.")) {
+            throw new IllegalArgumentException("Access to cloud metadata endpoints is not allowed");
+        }
+
+        // Resolve hostname and check if it's a private/internal IP
+        try {
+            InetAddress address = InetAddress.getByName(host);
+            
+            if (address.isLoopbackAddress()) {
+                throw new IllegalArgumentException("Loopback addresses are not allowed");
+            }
+            if (address.isSiteLocalAddress()) {
+                throw new IllegalArgumentException("Private network addresses are not allowed");
+            }
+            if (address.isLinkLocalAddress()) {
+                throw new IllegalArgumentException("Link-local addresses are not allowed");
+            }
+            if (address.isAnyLocalAddress()) {
+                throw new IllegalArgumentException("Wildcard addresses are not allowed");
+            }
+            
+            // Additional check for IPv4 private ranges that might slip through
+            byte[] addr = address.getAddress();
+            if (addr.length == 4) {
+                int first = addr[0] & 0xFF;
+                int second = addr[1] & 0xFF;
+                
+                // 10.0.0.0/8
+                if (first == 10) {
+                    throw new IllegalArgumentException("Private network addresses (10.x.x.x) are not allowed");
+                }
+                // 172.16.0.0/12
+                if (first == 172 && second >= 16 && second <= 31) {
+                    throw new IllegalArgumentException("Private network addresses (172.16-31.x.x) are not allowed");
+                }
+                // 192.168.0.0/16
+                if (first == 192 && second == 168) {
+                    throw new IllegalArgumentException("Private network addresses (192.168.x.x) are not allowed");
+                }
+                // 169.254.0.0/16 (link-local, includes AWS metadata)
+                if (first == 169 && second == 254) {
+                    throw new IllegalArgumentException("Link-local addresses (169.254.x.x) are not allowed");
+                }
+            }
+            
+            // Check for IPv6 private/internal ranges
+            if (addr.length == 16) {
+                // fd00::/8 - unique local addresses
+                if ((addr[0] & 0xFF) == 0xfd) {
+                    throw new IllegalArgumentException("IPv6 unique local addresses are not allowed");
+                }
+                // fe80::/10 - link-local
+                if ((addr[0] & 0xFF) == 0xfe && (addr[1] & 0xC0) == 0x80) {
+                    throw new IllegalArgumentException("IPv6 link-local addresses are not allowed");
+                }
+            }
+            
+        } catch (IllegalArgumentException e) {
+            throw e;  // Re-throw our validation errors
+        } catch (Exception e) {
+            log.warn("Could not resolve hostname {}: {}", host, e.getMessage());
+            // Allow the request to proceed — DNS resolution might work differently on the network
+        }
+
+        log.debug("URL validation passed for: {}", url);
+    }
+
     // ── Public API ─────────────────────────────────────────────────────────
 
     /**
@@ -91,6 +208,9 @@ public class RecipeScraperService {
      */
     public RecipeExtract extractFromUrl(String url) {
         log.info("Extracting recipe from URL: {}", url);
+        
+        // Validate URL to prevent SSRF attacks
+        validateUrl(url);
 
         String pageText = fetchPageText(url);
 
