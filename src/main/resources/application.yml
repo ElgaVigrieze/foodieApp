@@ -38,12 +38,8 @@ spring.servlet.multipart:
   max-file-size: 20MB
   max-request-size: 20MB
 
-# Proxy config for external API calls (Open Food Facts)
+# Cloudflare AI (optional - for photo/recipe analysis)
 app:
   cloudflare:
     account-id: ${CLOUDFLARE_ACCOUNT_ID:}
     api-token: ${CLOUDFLARE_API_TOKEN:}
-  proxy:
-    host: ${PROXY_HOST:}
-    port: ${PROXY_PORT:0}
-

@@ -7,14 +7,10 @@ import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
-import javax.net.ssl.*;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.net.InetAddress;
-import java.net.InetSocketAddress;
-import java.net.Proxy;
 import java.net.URI;
-import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
@@ -45,35 +41,15 @@ public class RecipeScraperService {
 
     public RecipeScraperService(
             @Value("${app.cloudflare.account-id:}") String accountId,
-            @Value("${app.cloudflare.api-token:}") String apiToken,
-            @Value("${app.proxy.host:}") String proxyHost,
-            @Value("${app.proxy.port:0}") int proxyPort) {
+            @Value("${app.cloudflare.api-token:}") String apiToken) {
 
         this.accountId = accountId;
         this.apiToken  = apiToken;
 
-        try {
-            TrustManager[] trustAll = new TrustManager[]{ new X509TrustManager() {
-                public X509Certificate[] getAcceptedIssuers() { return null; }
-                public void checkClientTrusted(X509Certificate[] c, String a) {}
-                public void checkServerTrusted(X509Certificate[] c, String a) {}
-            }};
-            SSLContext sslCtx = SSLContext.getInstance("TLS");
-            sslCtx.init(null, trustAll, new java.security.SecureRandom());
-            HttpsURLConnection.setDefaultSSLSocketFactory(sslCtx.getSocketFactory());
-            HttpsURLConnection.setDefaultHostnameVerifier((h, s) -> true);
-
-            SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
-            factory.setConnectTimeout(15_000);
-            factory.setReadTimeout(90_000);
-            if (!proxyHost.isBlank() && proxyPort > 0) {
-                factory.setProxy(new Proxy(Proxy.Type.HTTP, new InetSocketAddress(proxyHost, proxyPort)));
-                log.info("RecipeScraperService using proxy: {}:{}", proxyHost, proxyPort);
-            }
-            this.restClient = RestClient.builder().requestFactory(factory).build();
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to init RecipeScraperService", e);
-        }
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(15_000);
+        factory.setReadTimeout(90_000);
+        this.restClient = RestClient.builder().requestFactory(factory).build();
     }
 
     public boolean isAvailable() {

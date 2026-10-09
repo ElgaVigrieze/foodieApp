@@ -1,0 +1,63 @@
+name: Weekly Database Backup
+
+on:
+  schedule:
+    # Runs every Sunday at 3:00 AM UTC
+    - cron: '0 3 * * 0'
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Install Fly CLI
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Create database backup
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          # Start Fly proxy in background
+          flyctl proxy 15432:5432 -a foodie-app-db &
+          PROXY_PID=$!
+          
+          # Wait for proxy to be ready
+          sleep 5
+          
+          # Extract connection details and replace host/port with proxy
+          # DATABASE_URL format: postgres://user:pass@host:port/dbname
+          BACKUP_URL=$(echo "$DATABASE_URL" | sed 's|@[^/]*|@localhost:15432|')
+          
+          # Create backup with timestamp
+          TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+          pg_dump "$BACKUP_URL" > "foodie-backup-${TIMESTAMP}.sql"
+          
+          # Also create a compressed version
+          gzip -k "foodie-backup-${TIMESTAMP}.sql"
+          
+          # Stop proxy
+          kill $PROXY_PID || true
+          
+          echo "BACKUP_FILE=foodie-backup-${TIMESTAMP}.sql.gz" >> $GITHUB_ENV
+
+      - name: Upload backup artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: db-backup-${{ github.run_id }}
+          path: "*.sql.gz"
+          retention-days: 90
+
+      - name: Backup summary
+        run: |
+          echo "### ✅ Database Backup Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **File:** ${{ env.BACKUP_FILE }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Retention:** 90 days" >> $GITHUB_STEP_SUMMARY
+          echo "- **Download:** Check the workflow artifacts" >> $GITHUB_STEP_SUMMARY
