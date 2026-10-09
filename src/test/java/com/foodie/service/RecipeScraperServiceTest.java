@@ -24,7 +24,7 @@ class RecipeScraperServiceTest {
     @BeforeEach
     void setUp() {
         // Create service without Cloudflare credentials - we're testing parsing, not API calls
-        service = new RecipeScraperService("", "", "", 0);
+        service = new RecipeScraperService("", "");
     }
 
     @Nested

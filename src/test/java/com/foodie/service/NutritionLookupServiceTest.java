@@ -26,8 +26,8 @@ class NutritionLookupServiceTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        // Create service without proxy config
-        service = new NutritionLookupService("", 0);
+        // Create service with no-arg constructor
+        service = new NutritionLookupService();
 
         // Access private methods for testing
         extractJsonStringMethod = NutritionLookupService.class.getDeclaredMethod("extractJsonString", String.class, String.class);

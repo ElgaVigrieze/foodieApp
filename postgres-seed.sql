@@ -1,0 +1,30 @@
+-- Foodie data export for PostgreSQL
+-- Run this against the Railway PostgreSQL database
+
+-- products
+INSERT INTO products (id, name, category, unit, price_per_unit, calories, protein, carbs, fat, fiber, sugar) VALUES (1, 'Salmon', 'FISH_SEA_PRODUCTS', 'KG', 13.00, 154.00, 21.00, NULL, 6.00, NULL, NULL) ON CONFLICT (id) DO NOTHING;
+INSERT INTO products (id, name, category, unit, price_per_unit, calories, protein, carbs, fat, fiber, sugar) VALUES (2, 'Lemon', 'FRUIT_BERRIES', 'KG', 6.00, 20.00, 0.00, 4.80, 0.00, 0.00, 4.80) ON CONFLICT (id) DO NOTHING;
+INSERT INTO products (id, name, category, unit, price_per_unit, calories, protein, carbs, fat, fiber, sugar) VALUES (3, 'Sweet potato', 'VEGETABLES', 'KG', 5.00, 86.00, 1.60, 20.10, 0.00, 3.00, 5.10) ON CONFLICT (id) DO NOTHING;
+INSERT INTO products (id, name, category, unit, price_per_unit, calories, protein, carbs, fat, fiber, sugar) VALUES (4, 'Potato', 'VEGETABLES', 'KG', 2.00, 77.00, 2.00, 17.50, 0.00, 2.10, 0.00) ON CONFLICT (id) DO NOTHING;
+INSERT INTO products (id, name, category, unit, price_per_unit, calories, protein, carbs, fat, fiber, sugar) VALUES (9, 'Green peas', 'VEGETABLES', 'KG', 10.00, 150.91, 3.20, 29.00, 2.20, 1.30, 0.90) ON CONFLICT (id) DO NOTHING;
+INSERT INTO products (id, name, category, unit, price_per_unit, calories, protein, carbs, fat, fiber, sugar) VALUES (10, 'Cucumber', 'VEGETABLES', 'KG', 5.00, 13.00, 0.60, 2.00, 0.50, 0.50, 0.70) ON CONFLICT (id) DO NOTHING;
+INSERT INTO products (id, name, category, unit, price_per_unit, calories, protein, carbs, fat, fiber, sugar) VALUES (11, 'Tomato', 'VEGETABLES', 'KG', 6.00, 18.00, 1.02, 4.00, 0.08, 1.00, 0.06) ON CONFLICT (id) DO NOTHING;
+INSERT INTO products (id, name, category, unit, price_per_unit, calories, protein, carbs, fat, fiber, sugar) VALUES (12, 'Seasoning', 'CONDIMENTS', 'KG', 25.00, 457.00, 7.00, 6.00, 45.00, 2.00, 2.00) ON CONFLICT (id) DO NOTHING;
+INSERT INTO products (id, name, category, unit, price_per_unit, calories, protein, carbs, fat, fiber, sugar) VALUES (13, 'Cacao powder', 'CONDIMENTS', 'KG', 10.00, 228.06, 20.00, 58.00, 11.00, 33.00, 1.00) ON CONFLICT (id) DO NOTHING;
+INSERT INTO products (id, name, category, unit, price_per_unit, calories, protein, carbs, fat, fiber, sugar) VALUES (14, 'Biezpiens 0.5%', 'DAIRY', 'KG', 5.00, 98.00, 18.00, 3.50, 0.50, 0.00, 0.50) ON CONFLICT (id) DO NOTHING;
+INSERT INTO products (id, name, category, unit, price_per_unit, calories, protein, carbs, fat, fiber, sugar) VALUES (15, 'Biezpiens 9%', 'DAIRY', 'KG', 5.00, 149.00, 16.40, 0.80, 9.00, 0.00, 0.50) ON CONFLICT (id) DO NOTHING;
+INSERT INTO products (id, name, category, unit, price_per_unit, calories, protein, carbs, fat, fiber, sugar) VALUES (16, 'Erytritol', 'CONDIMENTS', 'KG', 14.00, 0.00, 0.00, 100.00, 0.00, 0.00, 0.00) ON CONFLICT (id) DO NOTHING;
+INSERT INTO products (id, name, category, unit, price_per_unit, calories, protein, carbs, fat, fiber, sugar) VALUES (17, 'Allulose', 'CONDIMENTS', 'KG', 20.00, 0.00, 0.00, 62.50, 0.00, 0.00, 0.00) ON CONFLICT (id) DO NOTHING;
+INSERT INTO products (id, name, category, unit, price_per_unit, calories, protein, carbs, fat, fiber, sugar) VALUES (18, 'Milk 2.5%', 'DAIRY', 'LITER', 1.60, 54.00, 3.20, 4.70, 2.50, 0.00, 4.70) ON CONFLICT (id) DO NOTHING;
+INSERT INTO products (id, name, category, unit, price_per_unit, calories, protein, carbs, fat, fiber, sugar) VALUES (19, 'Honey', 'CONDIMENTS', 'KG', 10.00, 384.00, 5.20, 85.00, 1.50, 4.60, 22.00) ON CONFLICT (id) DO NOTHING;
+INSERT INTO products (id, name, category, unit, price_per_unit, calories, protein, carbs, fat, fiber, sugar) VALUES (20, 'Extra virgin olive oil', 'CONDIMENTS', 'LITER', 18.00, 821.00, 0.00, 0.00, 91.00, 0.00, 0.00) ON CONFLICT (id) DO NOTHING;
+INSERT INTO products (id, name, category, unit, price_per_unit, calories, protein, carbs, fat, fiber, sugar) VALUES (21, 'Avocado', 'VEGETABLES', 'KG', 14.00, 5.00, 0.00, 0.00, 0.50, 0.00, 0.00) ON CONFLICT (id) DO NOTHING;
+INSERT INTO products (id, name, category, unit, price_per_unit, calories, protein, carbs, fat, fiber, sugar) VALUES (22, 'Soy sauce', 'CONDIMENTS', 'LITER', 18.00, 325.00, 10.00, 3.20, 0.00, 0.00, 0.60) ON CONFLICT (id) DO NOTHING;
+INSERT INTO products (id, name, category, unit, price_per_unit, calories, protein, carbs, fat, fiber, sugar) VALUES (23, 'Egg', 'DAIRY', 'KG', 4.55, 143.00, 13.00, 2.80, 9.50, 0.00, 2.00) ON CONFLICT (id) DO NOTHING;
+INSERT INTO products (id, name, category, unit, price_per_unit, calories, protein, carbs, fat, fiber, sugar) VALUES (24, 'Flounder', 'FISH_SEA_PRODUCTS', 'KG', 6.00, 70.00, 10.50, 2.10, 7.70, 0.70, 0.70) ON CONFLICT (id) DO NOTHING;
+INSERT INTO products (id, name, category, unit, price_per_unit, calories, protein, carbs, fat, fiber, sugar) VALUES (25, 'Red beans', 'NUTS_SEEDS', 'KG', 4.00, 115.00, 7.00, 5.30, 6.20, 4.80, 3.60) ON CONFLICT (id) DO NOTHING;
+INSERT INTO products (id, name, category, unit, price_per_unit, calories, protein, carbs, fat, fiber, sugar) VALUES (26, 'White beans', 'NUTS_SEEDS', 'KG', 4.00, 104.00, 6.60, 15.00, 0.80, 5.40, 0.20) ON CONFLICT (id) DO NOTHING;
+INSERT INTO products (id, name, category, unit, price_per_unit, calories, protein, carbs, fat, fiber, sugar) VALUES (27, 'Beef steak', 'MEAT', 'KG', 16.00, 209.00, 19.00, 0.00, 15.00, 0.00, 0.00) ON CONFLICT (id) DO NOTHING;
+INSERT INTO products (id, name, category, unit, price_per_unit, calories, protein, carbs, fat, fiber, sugar) VALUES (28, 'Ground beef 85%', 'MEAT', 'KG', 14.00, 214.29, 18.58, 0.00, 6.19, 0.00, 0.00) ON CONFLICT (id) DO NOTHING;
+INSERT INTO products (id, name, category, unit, price_per_unit, calories, protein, carbs, fat, fiber, sugar) VALUES (29, 'Cheddar cheese', 'DAIRY', 'KG', 6.00, 330.00, 22.00, 1.00, 26.00, 0.00, 0.00) ON CONFLICT (id) DO NOTHING;
+INSERT INTO products (id, name, category, unit, price_per_unit, calories, protein, carbs, fat, fiber, sugar) VALUES (30, 'Heavy cream 35%', 'DAIRY', 'LITER', 7.00, 337.00, 2.30, 3.10, 35.00, 0.00, 3.10) ON CONFLICT (id) DO NOTHING;
