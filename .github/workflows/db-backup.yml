@@ -23,6 +23,8 @@ jobs:
           echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
           sudo apt-get update
           sudo apt-get install -y postgresql-client-18
+          # Verify correct version
+          /usr/lib/postgresql/18/bin/pg_dump --version
 
       - name: Create database backup
         env:
@@ -42,7 +44,8 @@ jobs:
           
           # Create backup with timestamp
           TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-          pg_dump "$BACKUP_URL" > "foodie-backup-${TIMESTAMP}.sql"
+          # Use PostgreSQL 18 pg_dump explicitly
+          /usr/lib/postgresql/18/bin/pg_dump "$BACKUP_URL" > "foodie-backup-${TIMESTAMP}.sql"
           
           # Also create a compressed version
           gzip -k "foodie-backup-${TIMESTAMP}.sql"
