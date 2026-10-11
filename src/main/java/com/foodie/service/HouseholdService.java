@@ -1,6 +1,8 @@
 package com.foodie.service;
 
 import com.foodie.model.*;
+import com.foodie.model.db.AppUser;
+import com.foodie.model.db.Household;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import com.foodie.repository.AppUserRepository;
@@ -18,7 +20,7 @@ public class HouseholdService {
     private final CurrentUserService currentUserService;
 
     @Transactional
-    public Household createHousehold(String name) {
+    public void createHousehold(String name) {
         // Get user directly from OAuth principal to avoid entity loading issues
         var auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null || !(auth.getPrincipal() instanceof OAuth2User oAuth2User)) {
@@ -32,7 +34,6 @@ public class HouseholdService {
         user.setHousehold(household);
         user.setHouseholdRole(HouseholdRole.OWNER);
         appUserRepository.save(user);
-        return household;
     }
 
     @Transactional
@@ -45,15 +46,5 @@ public class HouseholdService {
                     appUserRepository.save(user);
                     return true;
                 }).orElse(false);
-    }
-
-    public Household getCurrentHousehold() {
-        AppUser user = currentUserService.getCurrentUser();
-        return user != null ? user.getHousehold() : null;
-    }
-
-    public boolean currentUserIsOwner() {
-        AppUser user = currentUserService.getCurrentUser();
-        return user != null && user.isOwner();
     }
 }

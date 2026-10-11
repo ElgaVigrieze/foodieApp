@@ -1,8 +1,13 @@
 package com.foodie.controller;
 
+import com.foodie.controller.dto.WorkoutSaveRequest;
 import com.foodie.model.*;
+import com.foodie.model.db.TrainingPlanEntry;
+import com.foodie.model.db.Workout;
 import com.foodie.service.CurrentUserService;
 import com.foodie.service.FitnessService;
+import com.foodie.util.CalendarUtils;
+import com.foodie.util.WorkoutJsonBuilder;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.stereotype.Controller;
@@ -12,7 +17,6 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
-import java.time.temporal.TemporalAdjusters;
 import java.util.*;
 
 @Controller
@@ -34,7 +38,7 @@ public class FitnessController {
     public String plan(@RequestParam(required = false)
                        @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate week,
                        Model model) {
-        LocalDate weekStart = fitnessService.weekStart(week != null ? week : LocalDate.now());
+        LocalDate weekStart = CalendarUtils.weekStart(week != null ? week : LocalDate.now());
         Map<LocalDate, List<TrainingPlanEntry>> weeklyPlan = fitnessService.getWeeklyPlan(weekStart);
 
         model.addAttribute("weekStart", weekStart);
@@ -43,7 +47,7 @@ public class FitnessController {
         model.addAttribute("weeklyPlan", weeklyPlan);
         model.addAttribute("days", DayOfWeek.values());
         model.addAttribute("allWorkouts", fitnessService.findAll());
-        model.addAttribute("workoutTypes", com.foodie.model.WorkoutType.values());
+        model.addAttribute("workoutTypes", WorkoutType.values());
         model.addAttribute("today", LocalDate.now());
         return "fitness/training-plan/weekly";
     }
@@ -94,7 +98,7 @@ public class FitnessController {
         model.addAttribute("workout", workout);
         model.addAttribute("workoutTypes", WorkoutType.values());
         model.addAttribute("isEdit", true);
-        model.addAttribute("parsedSets", fitnessService.parseSetsJson(workout.getSetsJson()));
+        model.addAttribute("parsedSets", WorkoutJsonBuilder.parseSetsJson(workout.getSetsJson()));
         return "fitness/form";
     }
 
@@ -102,79 +106,31 @@ public class FitnessController {
     public String detail(@PathVariable Long id, Model model) {
         Workout workout = fitnessService.findById(id);
         model.addAttribute("workout", workout);
-        model.addAttribute("parsedSets", fitnessService.parseSetsJson(workout.getSetsJson()));
+        model.addAttribute("parsedSets", WorkoutJsonBuilder.parseSetsJson(workout.getSetsJson()));
         return "fitness/detail";
     }
 
     @PostMapping("/workouts/save")
-    public String save(
-            @RequestParam(required = false) Long id,
-            @RequestParam String name,
-            @RequestParam String type,
-            @RequestParam(required = false) String notes,
-            @RequestParam(required = false) String youtubeUrl,
-            @RequestParam(required = false) Integer totalMinutes,
-            @RequestParam(required = false) Integer estimatedKcal,
-            // RUNNING
-            @RequestParam(required = false) String runningTempo,
-            @RequestParam(required = false) Double runningDistanceKm,
-            @RequestParam(required = false) Integer runningEstimatedKcal,
-            // HIIT
-            @RequestParam(required = false) String hiitType,
-            @RequestParam(required = false) Integer hiitWarmupSecs,
-            @RequestParam(required = false) Integer hiitCooldownSecs,
-            @RequestParam(required = false) Integer hiitNumberOfSets,
-            @RequestParam(required = false) Integer hiitHighIntensitySecs,
-            @RequestParam(required = false) Integer hiitRestSecs,
-            // STRENGTH
-            @RequestParam(required = false) String[] strengthExercise,
-            @RequestParam(required = false) String[] strengthReps,
-            @RequestParam(required = false) String[] strengthNumSets,
-            @RequestParam(required = false) String[] strengthWeightKg,
-            @RequestParam(required = false) String[] strengthPrepSecs,
-            @RequestParam(required = false) String[] strengthWorkSecs,
-            // PLYO
-            @RequestParam(required = false) String[] plyoJumpType,
-            @RequestParam(required = false) String[] plyoReps,
-            // PILATES / REHAB
-            @RequestParam(required = false) String[] genericDescription,
-            @RequestParam(required = false) String[] genericReps,
-            RedirectAttributes ra) {
-
-        WorkoutType workoutType = WorkoutType.valueOf(type);
-        String setsJson = switch (workoutType) {
-            case RUNNING, WALKING -> fitnessService.buildRunningJson(runningTempo, runningDistanceKm, runningEstimatedKcal);
-            case HIIT -> fitnessService.buildHiitJson(hiitType, hiitWarmupSecs, hiitCooldownSecs,
-                    hiitNumberOfSets, hiitHighIntensitySecs, hiitRestSecs);
-            case STRENGTH -> fitnessService.buildStrengthJson(
-                    strengthExercise != null ? strengthExercise : new String[0],
-                    strengthReps != null ? strengthReps : new String[0],
-                    strengthNumSets != null ? strengthNumSets : new String[0],
-                    strengthWeightKg != null ? strengthWeightKg : new String[0],
-                    strengthPrepSecs != null ? strengthPrepSecs : new String[0],
-                    strengthWorkSecs != null ? strengthWorkSecs : new String[0]);
-            case PLYO -> fitnessService.buildPlyoJson(
-                    plyoJumpType != null ? plyoJumpType : new String[0],
-                    plyoReps != null ? plyoReps : new String[0]);
-            case PILATES, REHAB -> fitnessService.buildGenericJson(
-                    genericDescription != null ? genericDescription : new String[0],
-                    genericReps != null ? genericReps : new String[0]);
-        };
+    public String save(@ModelAttribute WorkoutSaveRequest request, RedirectAttributes ra) {
+        String setsJson = request.buildSetsJson();
 
         Workout workout;
-        if (id != null) {
-            workout = fitnessService.findById(id);
-            workout.setName(name);
-            workout.setNotes(notes);
-            workout.setYoutubeUrl(youtubeUrl);
-            workout.setTotalMinutes(totalMinutes);
-            workout.setEstimatedKcal(estimatedKcal);
+        if (request.id() != null) {
+            workout = fitnessService.findById(request.id());
+            workout.setName(request.name());
+            workout.setNotes(request.notes());
+            workout.setYoutubeUrl(request.youtubeUrl());
+            workout.setTotalMinutes(request.totalMinutes());
+            workout.setEstimatedKcal(request.estimatedKcal());
             workout.setSetsJson(setsJson);
         } else {
             workout = Workout.builder()
-                    .name(name).type(workoutType)
-                    .notes(notes).youtubeUrl(youtubeUrl)
-                    .totalMinutes(totalMinutes).setsJson(setsJson)
+                    .name(request.name())
+                    .type(request.getWorkoutType())
+                    .notes(request.notes())
+                    .youtubeUrl(request.youtubeUrl())
+                    .totalMinutes(request.totalMinutes())
+                    .setsJson(setsJson)
                     .owner(currentUserService.getCurrentUser())
                     .build();
         }

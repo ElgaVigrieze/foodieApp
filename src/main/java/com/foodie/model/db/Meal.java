@@ -1,5 +1,9 @@
-package com.foodie.model;
+package com.foodie.model.db;
 
+import com.foodie.model.MealCategory;
+import com.foodie.model.NutrientType;
+import com.foodie.model.OwnedEntity;
+import com.foodie.model.Unit;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -19,7 +23,7 @@ import java.util.List;
 @Getter @Setter
 @NoArgsConstructor @AllArgsConstructor
 @Builder
-public class Meal {
+public class Meal implements OwnedEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

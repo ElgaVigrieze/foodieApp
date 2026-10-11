@@ -1,8 +1,8 @@
 package com.foodie.controller;
 
-import com.foodie.model.Meal;
+import com.foodie.model.db.Meal;
 import com.foodie.model.MealSlot;
-import com.foodie.model.Product;
+import com.foodie.model.db.Product;
 import com.foodie.model.Unit;
 import com.foodie.service.FoodLogService;
 import com.foodie.service.MealService;

@@ -1,7 +1,8 @@
 package com.foodie.service;
 
-import com.foodie.model.AppUser;
-import com.foodie.model.Household;
+import com.foodie.model.db.AppUser;
+import com.foodie.model.db.Household;
+import com.foodie.model.OwnedEntity;
 import com.foodie.repository.AppUserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -46,10 +47,6 @@ public class CurrentUserService {
         return user != null && user.isOwner();
     }
 
-    public boolean hasHousehold() {
-        return getCurrentHousehold() != null;
-    }
-
     @Transactional
     public void saveTargets(BigDecimal calories, BigDecimal fiber, BigDecimal carbs,
                             BigDecimal fat, BigDecimal protein, BigDecimal cost) {
@@ -62,5 +59,27 @@ public class CurrentUserService {
         user.setTargetProtein(protein);
         user.setTargetCost(cost);
         appUserRepository.save(user);
+    }
+
+    /**
+     * Validates that the current user has access to the given entity.
+     * Access is granted if the user owns the entity OR is in the same household.
+     * @throws SecurityException if not authenticated or not authorized
+     */
+    public void validateUserAccess(OwnedEntity entry) {
+        AppUser currentUser = getCurrentUser();
+        if (currentUser == null) {
+            throw new SecurityException("Not authenticated");
+        }
+
+        boolean isOwner = entry.getOwner() != null &&
+                entry.getOwner().getId().equals(currentUser.getId());
+        boolean isSameHousehold = entry.getHousehold() != null &&
+                currentUser.getHousehold() != null &&
+                entry.getHousehold().getId().equals(currentUser.getHousehold().getId());
+
+        if (!isOwner && !isSameHousehold) {
+            throw new SecurityException("Not authorized to access this entry");
+        }
     }
 }

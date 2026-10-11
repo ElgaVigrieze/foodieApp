@@ -1,8 +1,11 @@
 package com.foodie.model;
 
+import lombok.Getter;
+
 /**
  * Category of a meal.
  */
+@Getter
 public enum MealCategory {
     MAIN_COURSE("Main Course"),
     SOUP("Soup"),
@@ -19,7 +22,4 @@ public enum MealCategory {
         this.label = label;
     }
 
-    public String getLabel() {
-        return label;
-    }
 }

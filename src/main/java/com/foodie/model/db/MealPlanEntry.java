@@ -1,5 +1,6 @@
-package com.foodie.model;
+package com.foodie.model.db;
 
+import com.foodie.model.MealSlot;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;

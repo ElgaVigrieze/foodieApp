@@ -1,5 +1,8 @@
-package com.foodie.model;
+package com.foodie.model.db;
 
+import com.foodie.model.MealSlot;
+import com.foodie.model.OwnedEntity;
+import com.foodie.model.Unit;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
@@ -16,7 +19,7 @@ import java.time.LocalDate;
 @Getter @Setter
 @NoArgsConstructor @AllArgsConstructor
 @Builder
-public class FoodLog {
+public class FoodLog implements OwnedEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

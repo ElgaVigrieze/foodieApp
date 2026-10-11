@@ -1,6 +1,9 @@
 package com.foodie.service;
 
 import com.foodie.model.*;
+import com.foodie.model.db.Meal;
+import com.foodie.model.db.MealIngredient;
+import com.foodie.model.db.Product;
 import com.foodie.repository.MealRepository;
 import com.foodie.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
@@ -28,25 +31,12 @@ public class MealService {
     private Meal findByIdAndVerifyAccess(Long id) {
         Meal meal = mealRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Meal not found: " + id));
-        
-        AppUser currentUser = currentUserService.getCurrentUser();
-        if (currentUser == null) {
-            throw new SecurityException("Not authenticated");
-        }
-        
-        // Allow access if user owns the meal OR is in the same household
-        boolean isOwner = meal.getOwner() != null && 
-                          meal.getOwner().getId().equals(currentUser.getId());
-        boolean isSameHousehold = meal.getHousehold() != null && 
-                                  currentUser.getHousehold() != null &&
-                                  meal.getHousehold().getId().equals(currentUser.getHousehold().getId());
-        
-        if (!isOwner && !isSameHousehold) {
-            throw new SecurityException("Not authorized to access this meal");
-        }
-        
+
+        currentUserService.validateUserAccess(meal);
+
         return meal;
     }
+
 
     public List<Meal> findAll() {
         Long hhId = currentUserService.getCurrentHouseholdId();
@@ -101,23 +91,12 @@ public class MealService {
                 .household(currentUserService.getCurrentHousehold())
                 .build();
 
-        for (int i = 0; i < productIds.size(); i++) {
-            if (productIds.get(i) != null && quantities.get(i) != null
-                    && quantities.get(i).compareTo(BigDecimal.ZERO) > 0) {
-                Product product = productRepository.findById(productIds.get(i))
-                        .orElseThrow(() -> new IllegalArgumentException("Product not found"));
-                MealIngredient ingredient = MealIngredient.builder()
-                        .product(product)
-                        .quantity(quantities.get(i))
-                        .build();
-                meal.addIngredient(ingredient);
-            }
-        }
+        mapIngredients(productIds, quantities, meal);
         return mealRepository.save(meal);
     }
 
     @Transactional
-    public Meal updateMeal(Long id, String name, MealCategory category, int servings, String recipe, String recipeUrl,
+    public void updateMeal(Long id, String name, MealCategory category, int servings, String recipe, String recipeUrl,
                            List<Long> productIds, List<BigDecimal> quantities) {
         Meal meal = findById(id);
         meal.setName(name);
@@ -127,19 +106,8 @@ public class MealService {
         meal.setRecipeUrl(recipeUrl);
         meal.getIngredients().clear();
 
-        for (int i = 0; i < productIds.size(); i++) {
-            if (productIds.get(i) != null && quantities.get(i) != null
-                    && quantities.get(i).compareTo(BigDecimal.ZERO) > 0) {
-                Product product = productRepository.findById(productIds.get(i))
-                        .orElseThrow(() -> new IllegalArgumentException("Product not found"));
-                MealIngredient ingredient = MealIngredient.builder()
-                        .product(product)
-                        .quantity(quantities.get(i))
-                        .build();
-                meal.addIngredient(ingredient);
-            }
-        }
-        return mealRepository.save(meal);
+        mapIngredients(productIds, quantities, meal);
+        mealRepository.save(meal);
     }
 
     public void deleteById(Long id) {
@@ -163,7 +131,38 @@ public class MealService {
         mealRepository.save(meal);
     }
 
-    public List<Meal> findByCategory(MealCategory category) {
-        return mealRepository.findByCategoryOrderByNameAsc(category);
+    private void mapIngredients(List<Long> productIds, List<BigDecimal> quantities, Meal meal) {
+        // Filter valid entries and collect IDs to fetch
+        List<Long> validIds = new java.util.ArrayList<>();
+        for (int i = 0; i < productIds.size(); i++) {
+            if (productIds.get(i) != null && quantities.get(i) != null
+                    && quantities.get(i).compareTo(BigDecimal.ZERO) > 0) {
+                validIds.add(productIds.get(i));
+            }
+        }
+
+        if (validIds.isEmpty()) return;
+
+        // Batch fetch all products in one query
+        Map<Long, Product> productsById = productRepository.findAllById(validIds).stream()
+                .collect(Collectors.toMap(Product::getId, p -> p));
+
+        // Build ingredients
+        for (int i = 0; i < productIds.size(); i++) {
+            Long productId = productIds.get(i);
+            BigDecimal quantity = quantities.get(i);
+
+            if (productId != null && quantity != null && quantity.compareTo(BigDecimal.ZERO) > 0) {
+                Product product = productsById.get(productId);
+                if (product == null) {
+                    throw new IllegalArgumentException("Product not found: " + productId);
+                }
+                MealIngredient ingredient = MealIngredient.builder()
+                        .product(product)
+                        .quantity(quantity)
+                        .build();
+                meal.addIngredient(ingredient);
+            }
+        }
     }
 }

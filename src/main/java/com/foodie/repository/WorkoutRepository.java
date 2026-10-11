@@ -1,6 +1,6 @@
 package com.foodie.repository;
 
-import com.foodie.model.Workout;
+import com.foodie.model.db.Workout;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;

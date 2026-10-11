@@ -1,6 +1,6 @@
 package com.foodie.repository;
 
-import com.foodie.model.Household;
+import com.foodie.model.db.Household;
 import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.Optional;
 

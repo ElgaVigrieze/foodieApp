@@ -1,6 +1,6 @@
 package com.foodie.controller;
 
-import com.foodie.model.Product;
+import com.foodie.model.db.Product;
 import com.foodie.model.ProductCategory;
 import com.foodie.model.Unit;
 import com.foodie.service.ProductService;

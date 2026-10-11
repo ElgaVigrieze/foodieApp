@@ -1,6 +1,8 @@
 package com.foodie.service;
 
-import com.foodie.model.Product;
+import com.foodie.controller.dto.MatchedIngredient;
+import com.foodie.model.db.Product;
+import com.foodie.model.RecipeExtract;
 import com.foodie.model.Unit;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -84,7 +86,7 @@ class RecipeIngredientMatcherServiceTest {
                 List.of(ingredient("chicken breast", "0.5", "kg"))
             );
 
-            List<RecipeIngredientMatcherService.MatchedIngredient> results = matcherService.matchAll(extract);
+            List<MatchedIngredient> results = matcherService.matchAll(extract);
 
             assertEquals(1, results.size());
             assertFalse(results.get(0).isNew());
@@ -102,7 +104,7 @@ class RecipeIngredientMatcherServiceTest {
                 List.of(ingredient("OLIVE OIL", "0.05", "L"))
             );
 
-            List<RecipeIngredientMatcherService.MatchedIngredient> results = matcherService.matchAll(extract);
+            List<MatchedIngredient> results = matcherService.matchAll(extract);
 
             assertEquals(1, results.size());
             assertFalse(results.get(0).isNew());
@@ -120,7 +122,7 @@ class RecipeIngredientMatcherServiceTest {
                 List.of(ingredient("parmesan", "0.1", "kg"))
             );
 
-            List<RecipeIngredientMatcherService.MatchedIngredient> results = matcherService.matchAll(extract);
+            List<MatchedIngredient> results = matcherService.matchAll(extract);
 
             assertEquals(1, results.size());
             assertFalse(results.get(0).isNew());
@@ -138,7 +140,7 @@ class RecipeIngredientMatcherServiceTest {
                 List.of(ingredient("spaghetti", "0.4", "kg"))
             );
 
-            List<RecipeIngredientMatcherService.MatchedIngredient> results = matcherService.matchAll(extract);
+            List<MatchedIngredient> results = matcherService.matchAll(extract);
 
             assertEquals(1, results.size());
             assertFalse(results.get(0).isNew());
@@ -160,7 +162,7 @@ class RecipeIngredientMatcherServiceTest {
                 List.of(ingredient("avocado", "0.2", "kg"))
             );
 
-            List<RecipeIngredientMatcherService.MatchedIngredient> results = matcherService.matchAll(extract);
+            List<MatchedIngredient> results = matcherService.matchAll(extract);
 
             assertEquals(1, results.size());
             assertTrue(results.get(0).isNew());
@@ -178,7 +180,7 @@ class RecipeIngredientMatcherServiceTest {
                 List.of(ingredient("zucchini", "0.3", "g"))
             );
 
-            List<RecipeIngredientMatcherService.MatchedIngredient> results = matcherService.matchAll(extract);
+            List<MatchedIngredient> results = matcherService.matchAll(extract);
 
             assertTrue(results.get(0).isNew());
             assertEquals(Unit.KG, results.get(0).product().getUnit());
@@ -194,7 +196,7 @@ class RecipeIngredientMatcherServiceTest {
                 List.of(ingredient("coconut cream", "0.4", "L")) // Use L not ml for LITER inference
             );
 
-            List<RecipeIngredientMatcherService.MatchedIngredient> results = matcherService.matchAll(extract);
+            List<MatchedIngredient> results = matcherService.matchAll(extract);
 
             assertTrue(results.get(0).isNew());
             assertEquals(Unit.LITER, results.get(0).product().getUnit());
@@ -210,7 +212,7 @@ class RecipeIngredientMatcherServiceTest {
                 List.of(ingredient("bay leaves", "3", "piece"))
             );
 
-            List<RecipeIngredientMatcherService.MatchedIngredient> results = matcherService.matchAll(extract);
+            List<MatchedIngredient> results = matcherService.matchAll(extract);
 
             assertTrue(results.get(0).isNew());
             assertEquals(Unit.PIECE, results.get(0).product().getUnit());
@@ -226,7 +228,7 @@ class RecipeIngredientMatcherServiceTest {
                 List.of(ingredient("fresh mozzarella", "0.2", "kg"))
             );
 
-            List<RecipeIngredientMatcherService.MatchedIngredient> results = matcherService.matchAll(extract);
+            List<MatchedIngredient> results = matcherService.matchAll(extract);
 
             assertTrue(results.get(0).isNew());
             assertEquals("Fresh mozzarella", results.get(0).product().getName());
@@ -249,7 +251,7 @@ class RecipeIngredientMatcherServiceTest {
                 List.of(ingredient("xy", "0.05", "kg"))
             );
 
-            List<RecipeIngredientMatcherService.MatchedIngredient> results = matcherService.matchAll(extract);
+            List<MatchedIngredient> results = matcherService.matchAll(extract);
 
             // Should create new product because "xy" doesn't meet threshold
             assertTrue(results.get(0).isNew());
@@ -266,7 +268,7 @@ class RecipeIngredientMatcherServiceTest {
                 List.of(ingredient("olive", "0.05", "L"))
             );
 
-            List<RecipeIngredientMatcherService.MatchedIngredient> results = matcherService.matchAll(extract);
+            List<MatchedIngredient> results = matcherService.matchAll(extract);
 
             assertFalse(results.get(0).isNew());
             assertEquals("Olive Oil", results.get(0).product().getName());
@@ -288,7 +290,7 @@ class RecipeIngredientMatcherServiceTest {
                 List.of(ingredient("tomato sauce", "0.5", "L"))
             );
 
-            List<RecipeIngredientMatcherService.MatchedIngredient> results = matcherService.matchAll(extract);
+            List<MatchedIngredient> results = matcherService.matchAll(extract);
 
             assertFalse(results.get(0).isNew());
             assertEquals("Tomato Sauce", results.get(0).product().getName());
@@ -309,7 +311,7 @@ class RecipeIngredientMatcherServiceTest {
                 List.of(ingredient("brown rice", "0.35", "kg"))
             );
 
-            List<RecipeIngredientMatcherService.MatchedIngredient> results = matcherService.matchAll(extract);
+            List<MatchedIngredient> results = matcherService.matchAll(extract);
 
             assertEquals(0, new BigDecimal("0.35").compareTo(results.get(0).quantity()));
         }
@@ -324,7 +326,7 @@ class RecipeIngredientMatcherServiceTest {
                 List.of(ingredient("butter", "0.0625", "kg")) // 62.5g
             );
 
-            List<RecipeIngredientMatcherService.MatchedIngredient> results = matcherService.matchAll(extract);
+            List<MatchedIngredient> results = matcherService.matchAll(extract);
 
             assertEquals(0, new BigDecimal("0.0625").compareTo(results.get(0).quantity()));
         }
@@ -339,7 +341,7 @@ class RecipeIngredientMatcherServiceTest {
                 List.of(ingredient("eggs", "4", "piece"))
             );
 
-            List<RecipeIngredientMatcherService.MatchedIngredient> results = matcherService.matchAll(extract);
+            List<MatchedIngredient> results = matcherService.matchAll(extract);
 
             assertFalse(results.get(0).isNew());
             assertEquals("Eggs", results.get(0).product().getName());
@@ -367,7 +369,7 @@ class RecipeIngredientMatcherServiceTest {
                 )
             );
 
-            List<RecipeIngredientMatcherService.MatchedIngredient> results = matcherService.matchAll(extract);
+            List<MatchedIngredient> results = matcherService.matchAll(extract);
 
             assertEquals(5, results.size());
             
@@ -392,13 +394,13 @@ class RecipeIngredientMatcherServiceTest {
                 )
             );
 
-            List<RecipeIngredientMatcherService.MatchedIngredient> results = matcherService.matchAll(extract);
+            List<MatchedIngredient> results = matcherService.matchAll(extract);
 
             assertEquals(5, results.size());
             
             // Count matches vs new
             long matchedCount = results.stream().filter(m -> !m.isNew()).count();
-            long newCount = results.stream().filter(RecipeIngredientMatcherService.MatchedIngredient::isNew).count();
+            long newCount = results.stream().filter(MatchedIngredient::isNew).count();
             
             assertTrue(matchedCount >= 2, "At least chicken and rice should match"); 
             assertTrue(newCount >= 2, "At least coconut cream and fish sauce should be new");
@@ -419,7 +421,7 @@ class RecipeIngredientMatcherServiceTest {
                 List.of()
             );
 
-            List<RecipeIngredientMatcherService.MatchedIngredient> results = matcherService.matchAll(extract);
+            List<MatchedIngredient> results = matcherService.matchAll(extract);
 
             assertTrue(results.isEmpty());
         }
@@ -434,7 +436,7 @@ class RecipeIngredientMatcherServiceTest {
                 List.of(ingredient("chicken", "0.5", "kg"))
             );
 
-            List<RecipeIngredientMatcherService.MatchedIngredient> results = matcherService.matchAll(extract);
+            List<MatchedIngredient> results = matcherService.matchAll(extract);
 
             assertEquals(1, results.size());
             assertTrue(results.get(0).isNew());
@@ -450,7 +452,7 @@ class RecipeIngredientMatcherServiceTest {
                 List.of(ingredient("  chicken breast  ", "0.5", "kg"))
             );
 
-            List<RecipeIngredientMatcherService.MatchedIngredient> results = matcherService.matchAll(extract);
+            List<MatchedIngredient> results = matcherService.matchAll(extract);
 
             // Should still match after trimming
             assertFalse(results.get(0).isNew());
@@ -472,7 +474,7 @@ class RecipeIngredientMatcherServiceTest {
                 List.of(ingredient("bread", "2", "slice"))
             );
 
-            List<RecipeIngredientMatcherService.MatchedIngredient> results = matcherService.matchAll(extract);
+            List<MatchedIngredient> results = matcherService.matchAll(extract);
 
             assertEquals(Unit.PIECE, results.get(0).product().getUnit());
         }
@@ -487,7 +489,7 @@ class RecipeIngredientMatcherServiceTest {
                 List.of(ingredient("garlic", "4", "clove"))
             );
 
-            List<RecipeIngredientMatcherService.MatchedIngredient> results = matcherService.matchAll(extract);
+            List<MatchedIngredient> results = matcherService.matchAll(extract);
 
             assertEquals(Unit.PIECE, results.get(0).product().getUnit());
         }
@@ -502,7 +504,7 @@ class RecipeIngredientMatcherServiceTest {
                 List.of(ingredient("soy sauce", "0.03", "tbsp"))
             );
 
-            List<RecipeIngredientMatcherService.MatchedIngredient> results = matcherService.matchAll(extract);
+            List<MatchedIngredient> results = matcherService.matchAll(extract);
 
             assertEquals(Unit.LITER, results.get(0).product().getUnit());
         }
@@ -517,7 +519,7 @@ class RecipeIngredientMatcherServiceTest {
                 List.of(ingredient("water", "0.48", "cup"))
             );
 
-            List<RecipeIngredientMatcherService.MatchedIngredient> results = matcherService.matchAll(extract);
+            List<MatchedIngredient> results = matcherService.matchAll(extract);
 
             assertEquals(Unit.LITER, results.get(0).product().getUnit());
         }
@@ -532,7 +534,7 @@ class RecipeIngredientMatcherServiceTest {
                 List.of(ingredient("mystery ingredient", "0.1", "unknown_unit"))
             );
 
-            List<RecipeIngredientMatcherService.MatchedIngredient> results = matcherService.matchAll(extract);
+            List<MatchedIngredient> results = matcherService.matchAll(extract);
 
             assertEquals(Unit.KG, results.get(0).product().getUnit());
         }

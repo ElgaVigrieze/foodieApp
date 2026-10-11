@@ -1,8 +1,8 @@
 package com.foodie.service;
 
-import com.foodie.model.MealPlan;
-import com.foodie.model.Product;
-import com.foodie.model.ShoppingListItem;
+import com.foodie.model.db.MealPlan;
+import com.foodie.model.db.Product;
+import com.foodie.model.db.ShoppingListItem;
 import com.foodie.repository.ShoppingListItemRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -39,31 +39,29 @@ public class ShoppingListService {
     }
 
     /**
-     * Re-generate from meal plan, preserving user adjustments where possible.
+     * Re-generate from the meal plan, preserving user adjustments where possible.
      */
     @Transactional
-    public List<ShoppingListItem> regenerate(LocalDate weekStart, MealPlan plan) {
+    public void regenerate(LocalDate weekStart, MealPlan plan) {
         List<ShoppingListItem> existing = repository.findByWeekStartOrderByProductNameAsc(weekStart);
         Map<Long, ShoppingListItem> existingByProductId = existing.stream()
                 .collect(Collectors.toMap(i -> i.getProduct().getId(), Function.identity()));
 
         List<MealPlanService.ShoppingItem> calculated = mealPlanService.getShoppingList(plan);
 
-        // Update existing or create new
         for (MealPlanService.ShoppingItem calc : calculated) {
-            ShoppingListItem item = existingByProductId.get(calc.getProduct().getId());
+            ShoppingListItem item = existingByProductId.remove(calc.getProduct().getId());
             if (item != null) {
-                // Update calculated quantity; keep adjusted if user changed it
+                // Update calculated quantity
+                BigDecimal oldCalculated = item.getCalculatedQuantity();
                 item.setCalculatedQuantity(calc.getTotalQuantity());
-                // If user hadn't manually changed it, update adjusted too
-                if (item.getAdjustedQuantity().compareTo(item.getCalculatedQuantity()) == 0
-                        || item.getAdjustedQuantity().compareTo(calc.getTotalQuantity()) != 0) {
-                    // Only auto-update if user hadn't specifically overridden
+
+                // If user hadn't manually adjusted, update adjusted quantity too
+                if (item.getAdjustedQuantity().compareTo(oldCalculated) == 0) {
+                    item.setAdjustedQuantity(calc.getTotalQuantity());
                 }
-                item.setCalculatedQuantity(calc.getTotalQuantity());
-                existingByProductId.remove(calc.getProduct().getId());
             } else {
-                // New item
+                // New item from plan
                 ShoppingListItem newItem = ShoppingListItem.builder()
                         .weekStart(weekStart)
                         .product(calc.getProduct())
@@ -75,28 +73,19 @@ public class ShoppingListService {
         }
 
         // Remove items that are no longer in the plan
-        for (ShoppingListItem orphan : existingByProductId.values()) {
-            repository.delete(orphan);
-        }
-
-        repository.flush();
-        return repository.findByWeekStartOrderByProductNameAsc(weekStart);
+        repository.deleteAll(existingByProductId.values());
     }
 
     @Transactional
     public void updateQuantity(Long itemId, BigDecimal newQuantity) {
-        ShoppingListItem item = repository.findById(itemId)
-                .orElseThrow(() -> new IllegalArgumentException("Item not found: " + itemId));
+        ShoppingListItem item = findItemById(itemId);
         item.setAdjustedQuantity(newQuantity);
-        repository.save(item);
     }
 
     @Transactional
     public void toggleChecked(Long itemId) {
-        ShoppingListItem item = repository.findById(itemId)
-                .orElseThrow(() -> new IllegalArgumentException("Item not found: " + itemId));
+        ShoppingListItem item = findItemById(itemId);
         item.setChecked(!item.isChecked());
-        repository.save(item);
     }
 
     @Transactional
@@ -112,11 +101,13 @@ public class ShoppingListService {
 
     @Transactional
     public void updateComment(Long itemId, String comment) {
-        ShoppingListItem item = repository.findById(itemId)
-                .orElseThrow(() -> new IllegalArgumentException("Item not found: " + itemId));
-        // Trim and cap at 50 chars
-        item.setComment(comment != null ? comment.trim().substring(0, Math.min(comment.trim().length(), 50)) : null);
-        repository.save(item);
+        ShoppingListItem item = findItemById(itemId);
+        if (comment == null || comment.isBlank()) {
+            item.setComment(null);
+        } else {
+            String trimmed = comment.trim();
+            item.setComment(trimmed.length() > 50 ? trimmed.substring(0, 50) : trimmed);
+        }
     }
 
     @Transactional
@@ -132,6 +123,11 @@ public class ShoppingListService {
     }
 
     // ── Private ────────────────────────────────────────────────────────────
+
+    private ShoppingListItem findItemById(Long itemId) {
+        return repository.findById(itemId)
+                .orElseThrow(() -> new IllegalArgumentException("Item not found: " + itemId));
+    }
 
     private List<ShoppingListItem> generateFromPlan(LocalDate weekStart, MealPlan plan) {
         List<MealPlanService.ShoppingItem> calculated = mealPlanService.getShoppingList(plan);

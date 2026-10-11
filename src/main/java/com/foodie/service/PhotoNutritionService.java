@@ -1,65 +1,28 @@
 package com.foodie.service;
 
+import com.foodie.client.CloudflareAiClient;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.MediaType;
-import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestClient;
 
-import javax.net.ssl.*;
 import java.math.BigDecimal;
-import java.net.InetSocketAddress;
-import java.net.Proxy;
-import java.security.cert.X509Certificate;
-import java.util.*;
+import java.util.Base64;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+/**
+ * Service for analyzing food photos and estimating nutrition.
+ * Uses Cloudflare Workers AI vision model.
+ */
 @Service
 @Slf4j
+@RequiredArgsConstructor
 public class PhotoNutritionService {
 
-    private final RestClient restClient;
-    private final String accountId;
-    private final String apiToken;
-
-    public PhotoNutritionService(
-            @Value("${app.cloudflare.account-id:}") String accountId,
-            @Value("${app.cloudflare.api-token:}") String apiToken,
-            @Value("${app.proxy.host:}") String proxyHost,
-            @Value("${app.proxy.port:0}") int proxyPort) {
-        this.accountId = accountId;
-        this.apiToken = apiToken;
-
-        try {
-            // Bypass SSL verification (corporate proxy intercepts certificates)
-            TrustManager[] trustAll = new TrustManager[]{new X509TrustManager() {
-                public X509Certificate[] getAcceptedIssuers() { return null; }
-                public void checkClientTrusted(X509Certificate[] c, String a) {}
-                public void checkServerTrusted(X509Certificate[] c, String a) {}
-            }};
-            SSLContext sslContext = SSLContext.getInstance("TLS");
-            sslContext.init(null, trustAll, new java.security.SecureRandom());
-
-            javax.net.ssl.HttpsURLConnection.setDefaultSSLSocketFactory(sslContext.getSocketFactory());
-            javax.net.ssl.HttpsURLConnection.setDefaultHostnameVerifier((h, s) -> true);
-
-            SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
-            factory.setConnectTimeout(15000);
-            factory.setReadTimeout(60000);
-            if (!proxyHost.isBlank() && proxyPort > 0) {
-                factory.setProxy(new Proxy(Proxy.Type.HTTP, new InetSocketAddress(proxyHost, proxyPort)));
-            }
-            this.restClient = RestClient.builder().requestFactory(factory).build();
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to init PhotoNutritionService", e);
-        }
-    }
+    private final CloudflareAiClient cloudflareAiClient;
 
     public boolean isAvailable() {
-        return accountId != null && !accountId.isBlank()
-                && apiToken != null && !apiToken.isBlank();
+        return cloudflareAiClient.isAvailable();
     }
 
     /**
@@ -75,56 +38,17 @@ public class PhotoNutritionService {
         String prompt = "Analyze this food photo. Estimate the total nutritional content of everything visible. " +
                 "Respond ONLY in this exact format:\\nFOOD: <brief description>\\nCALORIES: <number>\\nPROTEIN: <number>g\\nCARBS: <number>g\\nFAT: <number>g\\nFIBER: <number>g\\nWEIGHT: <number>g";
 
-        String requestBody = """
-            {
-              "messages": [
-                {
-                  "role": "user",
-                  "content": [
-                    {"type": "text", "text": "%s"},
-                    {"type": "image_url", "image_url": {"url": "data:%s;base64,%s"}}
-                  ]
-                }
-              ],
-              "max_tokens": 512
-            }
-            """.formatted(prompt, mimeType, base64Image);
-
-        try {
-            String url = "https://api.cloudflare.com/client/v4/accounts/" + accountId +
-                    "/ai/run/@cf/meta/llama-3.2-11b-vision-instruct";
-
-            String response = restClient.post()
-                    .uri(url)
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .header("Authorization", "Bearer " + apiToken)
-                    .body(requestBody)
-                    .retrieve()
-                    .body(String.class);
-
-            log.info("Cloudflare AI response: {}", response);
-            return parseResponse(response);
-        } catch (Exception e) {
-            log.error("Cloudflare AI error: {}", e.getMessage());
-            return new NutritionEstimate("Error: " + e.getMessage(), null, null, null, null, null, null);
-        }
+        return cloudflareAiClient.callVisionModel(
+                        CloudflareAiClient.VISION_MODEL,
+                        prompt,
+                        base64Image,
+                        mimeType,
+                        512)
+                .map(this::parseResponse)
+                .orElseGet(() -> new NutritionEstimate("Error: Failed to get AI response", null, null, null, null, null, null));
     }
 
-    private NutritionEstimate parseResponse(String json) {
-        // Cloudflare response format: {"result":{"response":"..."},"success":true,...}
-        // Extract the response text
-        Pattern responsePattern = Pattern.compile("\"response\"\\s*:\\s*\"((?:[^\"\\\\]|\\\\.)*)\"");
-        Matcher responseMatcher = responsePattern.matcher(json);
-
-        if (!responseMatcher.find()) {
-            log.warn("Could not find 'response' in: {}", json);
-            return new NutritionEstimate("Could not parse response", null, null, null, null, null, null);
-        }
-
-        String text = responseMatcher.group(1)
-                .replace("\\n", "\n")
-                .replace("\\\"", "\"")
-                .replace("\\/", "/");
+    private NutritionEstimate parseResponse(String text) {
         log.info("Parsed AI text: {}", text);
 
         String food = extractValue(text, "FOOD:\\s*(.+)");

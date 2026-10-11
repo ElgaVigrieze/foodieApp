@@ -1,7 +1,7 @@
 package com.foodie.controller;
 
-import com.foodie.model.MealPlan;
-import com.foodie.model.ShoppingListItem;
+import com.foodie.model.db.MealPlan;
+import com.foodie.model.db.ShoppingListItem;
 import com.foodie.service.CurrentUserService;
 import com.foodie.service.MealPlanService;
 import com.foodie.service.ProductService;

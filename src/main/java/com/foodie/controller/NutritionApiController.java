@@ -1,5 +1,6 @@
 package com.foodie.controller;
 
+import com.foodie.controller.dto.NutritionInfo;
 import com.foodie.service.NutritionLookupService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -17,7 +18,7 @@ public class NutritionApiController {
      * Returns 200 with data or 404 if not found.
      */
     @GetMapping("/lookup")
-    public ResponseEntity<NutritionLookupService.NutritionInfo> lookup(@RequestParam String name) {
+    public ResponseEntity<NutritionInfo> lookup(@RequestParam String name) {
         return nutritionLookupService.lookup(name)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());

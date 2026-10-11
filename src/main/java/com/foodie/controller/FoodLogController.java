@@ -1,11 +1,13 @@
 package com.foodie.controller;
 
-import com.foodie.model.AppUser;
+import com.foodie.controller.dto.DayStatus;
+import com.foodie.model.db.AppUser;
 import com.foodie.model.MealSlot;
 import com.foodie.service.CurrentUserService;
 import com.foodie.service.FoodLogService;
 import com.foodie.service.MealService;
 import com.foodie.service.ProductService;
+import com.foodie.util.CalendarUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.stereotype.Controller;
@@ -141,32 +143,13 @@ public class FoodLogController {
         }
 
         AppUser user = currentUserService.getCurrentUser();
-        java.util.Map<Integer, FoodLogService.DayStatus> calendarData = foodLogService.getMonthlyCalendarData(yearMonth, user);
-
-        // Build calendar grid: list of weeks, each week is a list of day-numbers (0 = empty padding)
-        int firstDow = yearMonth.atDay(1).getDayOfWeek().getValue(); // 1=Mon..7=Sun
-        int daysInMonth = yearMonth.lengthOfMonth();
-        java.util.List<java.util.List<Integer>> weeks = new java.util.ArrayList<>();
-        java.util.List<Integer> currentWeek = new java.util.ArrayList<>();
-        // Pad start (Mon=1, so pad (firstDow-1) blanks)
-        for (int i = 1; i < firstDow; i++) currentWeek.add(0);
-        for (int day = 1; day <= daysInMonth; day++) {
-            currentWeek.add(day);
-            if (currentWeek.size() == 7) {
-                weeks.add(currentWeek);
-                currentWeek = new java.util.ArrayList<>();
-            }
-        }
-        if (!currentWeek.isEmpty()) {
-            while (currentWeek.size() < 7) currentWeek.add(0);
-            weeks.add(currentWeek);
-        }
+        java.util.Map<Integer, DayStatus> calendarData = foodLogService.getMonthlyCalendarData(yearMonth, user);
 
         model.addAttribute("yearMonth", yearMonth);
         model.addAttribute("prevMonth", yearMonth.minusMonths(1).format(DateTimeFormatter.ofPattern("yyyy-MM")));
         model.addAttribute("nextMonth", yearMonth.plusMonths(1).format(DateTimeFormatter.ofPattern("yyyy-MM")));
         model.addAttribute("calendarData", calendarData);
-        model.addAttribute("weeks", weeks);
+        model.addAttribute("weeks", CalendarUtils.buildWeeks(yearMonth));
         model.addAttribute("today", LocalDate.now());
         model.addAttribute("currentUser", user);
         return "log/calendar";

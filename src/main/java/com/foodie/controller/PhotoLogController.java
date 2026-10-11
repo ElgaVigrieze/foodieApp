@@ -1,18 +1,16 @@
 package com.foodie.controller;
 
+import com.foodie.controller.dto.PhotoEntryRequest;
+import com.foodie.model.MealSlot;
+import com.foodie.service.FoodLogService;
 import com.foodie.service.PhotoNutritionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.util.LinkedHashMap;
-import com.foodie.model.FoodLog;
-import com.foodie.model.MealSlot;
-import com.foodie.service.CurrentUserService;
-import com.foodie.service.FoodLogService;
-import com.foodie.repository.FoodLogRepository;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 @RestController
@@ -21,8 +19,7 @@ import java.util.Map;
 public class PhotoLogController {
 
     private final PhotoNutritionService photoNutritionService;
-    private final FoodLogRepository foodLogRepository;
-    private final CurrentUserService currentUserService;
+    private final FoodLogService foodLogService;
 
     @PostMapping("/analyze")
     public Map<String, Object> analyze(@RequestParam("image") MultipartFile image) {
@@ -68,25 +65,20 @@ public class PhotoLogController {
     public Map<String, Object> save(@RequestBody Map<String, Object> body) {
         Map<String, Object> result = new LinkedHashMap<>();
         try {
-            String date = (String) body.get("date");
-            String description = (String) body.get("description");
             String slotStr = (String) body.get("slot");
 
-            FoodLog entry = FoodLog.builder()
-                    .date(LocalDate.parse(date))
-                    .photoDescription(description)
-                    .directCalories(toBD(body.get("calories")))
-                    .directProtein(toBD(body.get("protein")))
-                    .directCarbs(toBD(body.get("carbs")))
-                    .directFat(toBD(body.get("fat")))
-                    .directFiber(toBD(body.get("fiber")))
-                    .servingsConsumed(BigDecimal.ONE)
-                    .slot(slotStr != null && !slotStr.isEmpty() ? MealSlot.valueOf(slotStr) : null)
-                    .owner(currentUserService.getCurrentUser())
-                    .household(currentUserService.getCurrentHousehold())
-                    .build();
+            PhotoEntryRequest request = new PhotoEntryRequest(
+                    LocalDate.parse((String) body.get("date")),
+                    (String) body.get("description"),
+                    toBigDecimal(body.get("calories")),
+                    toBigDecimal(body.get("protein")),
+                    toBigDecimal(body.get("carbs")),
+                    toBigDecimal(body.get("fat")),
+                    toBigDecimal(body.get("fiber")),
+                    slotStr != null && !slotStr.isEmpty() ? MealSlot.valueOf(slotStr) : null
+            );
 
-            foodLogRepository.save(entry);
+            foodLogService.addPhotoEntry(request);
             result.put("success", true);
         } catch (Exception e) {
             result.put("success", false);
@@ -95,7 +87,7 @@ public class PhotoLogController {
         return result;
     }
 
-    private BigDecimal toBD(Object val) {
+    private BigDecimal toBigDecimal(Object val) {
         if (val == null) return null;
         return new BigDecimal(val.toString());
     }

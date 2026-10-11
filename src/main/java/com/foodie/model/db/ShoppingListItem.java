@@ -1,4 +1,4 @@
-package com.foodie.model;
+package com.foodie.model.db;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;

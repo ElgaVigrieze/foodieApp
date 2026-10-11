@@ -1,8 +1,14 @@
 package com.foodie.service;
 
 import com.foodie.model.*;
+import com.foodie.model.db.Meal;
+import com.foodie.model.db.MealIngredient;
+import com.foodie.model.db.MealPlan;
+import com.foodie.model.db.MealPlanEntry;
+import com.foodie.model.db.Product;
 import com.foodie.repository.MealPlanRepository;
 import com.foodie.repository.MealRepository;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -12,7 +18,6 @@ import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.temporal.TemporalAdjusters;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -42,11 +47,13 @@ public class MealPlanService {
                     ));
         }
 
+        // No household - create personal plan with owner
         return mealPlanRepository.findByWeekStart(monday)
                 .orElseGet(() -> mealPlanRepository.save(
                         MealPlan.builder()
                                 .name("Week of " + monday)
                                 .weekStart(monday)
+                                .owner(currentUserService.getCurrentUser())
                                 .build()
                 ));
     }
@@ -69,8 +76,7 @@ public class MealPlanService {
 
     @Transactional
     public void removeEntry(Long planId, Long entryId) {
-        MealPlan plan = mealPlanRepository.findById(planId)
-                .orElseThrow(() -> new IllegalArgumentException("Plan not found: " + planId));
+        MealPlan plan = findPlanByIdWithAccess(planId);
         if (plan.isFrozen()) {
             throw new IllegalStateException("Cannot remove entries from a frozen plan.");
         }
@@ -80,69 +86,54 @@ public class MealPlanService {
 
     @Transactional
     public void moveEntry(Long planId, Long entryId, DayOfWeek newDay, MealSlot newSlot) {
-        MealPlan plan = mealPlanRepository.findById(planId)
-                .orElseThrow(() -> new IllegalArgumentException("Plan not found: " + planId));
-        plan.getEntries().stream()
-                .filter(e -> e.getId().equals(entryId))
-                .findFirst()
-                .ifPresent(entry -> {
-                    entry.setDayOfWeek(newDay);
-                    entry.setSlot(newSlot);
-                });
+        MealPlan plan = findPlanByIdWithAccess(planId);
+        findEntryById(plan, entryId).ifPresent(entry -> {
+            entry.setDayOfWeek(newDay);
+            entry.setSlot(newSlot);
+        });
         mealPlanRepository.save(plan);
     }
 
     @Transactional
     public void updateEntryServings(Long planId, Long entryId, Integer servings) {
-        MealPlan plan = mealPlanRepository.findById(planId)
-                .orElseThrow(() -> new IllegalArgumentException("Plan not found: " + planId));
-        plan.getEntries().stream()
-                .filter(e -> e.getId().equals(entryId))
-                .findFirst()
+        MealPlan plan = findPlanByIdWithAccess(planId);
+        findEntryById(plan, entryId)
                 .ifPresent(entry -> entry.setServings(servings != null && servings > 0 ? servings : 1));
         mealPlanRepository.save(plan);
     }
 
     @Transactional
     public void copyEntry(Long planId, Long entryId, DayOfWeek newDay, MealSlot newSlot) {
-        MealPlan plan = mealPlanRepository.findById(planId)
-                .orElseThrow(() -> new IllegalArgumentException("Plan not found: " + planId));
-        plan.getEntries().stream()
-                .filter(e -> e.getId().equals(entryId))
-                .findFirst()
-                .ifPresent(original -> {
-                    MealPlanEntry copy = MealPlanEntry.builder()
-                            .dayOfWeek(newDay)
-                            .slot(newSlot)
-                            .meal(original.getMeal())
-                            .servings(original.getServings())
-                            .build();
-                    plan.addEntry(copy);
-                });
+        MealPlan plan = findPlanByIdWithAccess(planId);
+        findEntryById(plan, entryId).ifPresent(original -> {
+            MealPlanEntry copy = MealPlanEntry.builder()
+                    .dayOfWeek(newDay)
+                    .slot(newSlot)
+                    .meal(original.getMeal())
+                    .servings(original.getServings())
+                    .build();
+            plan.addEntry(copy);
+        });
         mealPlanRepository.save(plan);
     }
 
     @Transactional
     public void toggleFreeze(Long planId) {
-        MealPlan plan = mealPlanRepository.findById(planId)
-                .orElseThrow(() -> new IllegalArgumentException("Plan not found: " + planId));
+        MealPlan plan = findPlanByIdWithAccess(planId);
         plan.setFrozen(!plan.isFrozen());
         mealPlanRepository.save(plan);
     }
 
     @Transactional
     public void togglePrepared(Long planId, Long entryId) {
-        MealPlan plan = mealPlanRepository.findById(planId)
-                .orElseThrow(() -> new IllegalArgumentException("Plan not found: " + planId));
-        plan.getEntries().stream()
-                .filter(e -> e.getId().equals(entryId))
-                .findFirst()
+        MealPlan plan = findPlanByIdWithAccess(planId);
+        findEntryById(plan, entryId)
                 .ifPresent(entry -> entry.setPrepared(!entry.isPrepared()));
         mealPlanRepository.save(plan);
     }
 
     /**
-     * Build a shopping list from the meal plan â€” aggregates all ingredient quantities.
+     * Build a shopping list from the meal plan, aggregates all ingredient quantities.
      */
     public List<ShoppingItem> getShoppingList(MealPlan plan) {
         Map<Long, ShoppingItem> items = new LinkedHashMap<>();
@@ -160,7 +151,6 @@ public class MealPlanService {
                         .addQuantity(quantityNeeded);
             }
         }
-
         return new ArrayList<>(items.values());
     }
 
@@ -174,23 +164,35 @@ public class MealPlanService {
      * Calculate total calories per day for a meal plan.
      */
     public Map<DayOfWeek, BigDecimal> getDailyCalories(MealPlan plan) {
-        Map<DayOfWeek, BigDecimal> dailyCals = new LinkedHashMap<>();
-        for (DayOfWeek day : DayOfWeek.values()) {
-            dailyCals.put(day, BigDecimal.ZERO);
-        }
+        Map<DayOfWeek, BigDecimal> dailyCals = new EnumMap<>(DayOfWeek.class);
 
         for (MealPlanEntry entry : plan.getEntries()) {
             BigDecimal calsForEntry = entry.getMeal().getCaloriesPerServing()
                     .multiply(BigDecimal.valueOf(entry.getServings() != null ? entry.getServings() : 1));
             dailyCals.merge(entry.getDayOfWeek(), calsForEntry, BigDecimal::add);
         }
-
         return dailyCals;
     }
 
+    // ── Helper methods ──────────────────────────────────────────────────────────
+
+    private MealPlan findPlanByIdWithAccess(Long planId) {
+        MealPlan plan = mealPlanRepository.findById(planId)
+                .orElseThrow(() -> new IllegalArgumentException("Plan not found: " + planId));
+        currentUserService.validateUserAccess(plan);
+        return plan;
+    }
+
+    private Optional<MealPlanEntry> findEntryById(MealPlan plan, Long entryId) {
+        return plan.getEntries().stream()
+                .filter(e -> e.getId().equals(entryId))
+                .findFirst();
+    }
+
     /**
-     * Represents a product + aggregated quantity in the shopping list.
+     * Represents a product and aggregated quantity in the shopping list.
      */
+    @Getter
     public static class ShoppingItem {
         private final Product product;
         private BigDecimal totalQuantity = BigDecimal.ZERO;
@@ -203,12 +205,8 @@ public class MealPlanService {
             this.totalQuantity = this.totalQuantity.add(qty);
         }
 
-        public Product getProduct() { return product; }
-        public BigDecimal getTotalQuantity() { return totalQuantity; }
-
         public BigDecimal getCost() {
             return product.getPricePerUnit().multiply(totalQuantity);
         }
     }
 }
-

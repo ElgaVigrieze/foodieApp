@@ -1,4 +1,4 @@
-package com.foodie.service;
+package com.foodie.model;
 
 import java.math.BigDecimal;
 import java.util.List;

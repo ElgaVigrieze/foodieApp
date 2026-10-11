@@ -1,12 +1,13 @@
-package com.foodie.model;
+package com.foodie.model.db;
 
+import com.foodie.model.NutrientType;
+import com.foodie.model.Unit;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import lombok.*;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 
 /**
  * A product used in a meal with a specific quantity.

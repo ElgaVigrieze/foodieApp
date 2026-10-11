@@ -1,5 +1,6 @@
-package com.foodie.model;
+package com.foodie.model.db;
 
+import com.foodie.model.OwnedEntity;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
@@ -17,7 +18,7 @@ import java.util.stream.Collectors;
 @Getter @Setter
 @NoArgsConstructor @AllArgsConstructor
 @Builder
-public class MealPlan {
+public class MealPlan implements OwnedEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -83,4 +84,3 @@ public class MealPlan {
         entry.setMealPlan(null);
     }
 }
-

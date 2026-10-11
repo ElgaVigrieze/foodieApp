@@ -1,5 +1,8 @@
 package com.foodie.model;
 
+import lombok.Getter;
+
+@Getter
 public enum WorkoutType {
     RUNNING("Running"),
     WALKING("Walking"),
@@ -15,7 +18,4 @@ public enum WorkoutType {
         this.label = label;
     }
 
-    public String getLabel() {
-        return label;
-    }
 }

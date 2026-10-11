@@ -1,6 +1,6 @@
 package com.foodie.config;
 
-import com.foodie.model.AppUser;
+import com.foodie.model.db.AppUser;
 import com.foodie.model.HouseholdRole;
 import com.foodie.repository.AppUserRepository;
 import lombok.RequiredArgsConstructor;

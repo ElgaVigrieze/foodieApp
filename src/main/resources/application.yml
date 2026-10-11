@@ -43,3 +43,8 @@ app:
   cloudflare:
     account-id: ${CLOUDFLARE_ACCOUNT_ID:}
     api-token: ${CLOUDFLARE_API_TOKEN:}
+    connect-timeout-ms: ${CF_CONNECT_TIMEOUT:15000}
+    read-timeout-ms: ${CF_READ_TIMEOUT:60000}
+  open-food-facts:
+    connect-timeout-ms: ${OFF_CONNECT_TIMEOUT:5000}
+    read-timeout-ms: ${OFF_READ_TIMEOUT:10000}

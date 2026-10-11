@@ -1,5 +1,8 @@
-package com.foodie.model;
+package com.foodie.model.db;
 
+import com.foodie.model.OwnedEntity;
+import com.foodie.model.ProductCategory;
+import com.foodie.model.Unit;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -17,7 +20,7 @@ import java.math.BigDecimal;
 @Getter @Setter
 @NoArgsConstructor @AllArgsConstructor
 @Builder
-public class Product {
+public class Product implements OwnedEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -71,5 +74,13 @@ public class Product {
         if (carbs == null || fiber == null) return carbs;
         return carbs.subtract(fiber);
     }
-}
 
+    /**
+     * Products are household-owned, not individually owned.
+     * Returns null since there's no owner field.
+     */
+    @Override
+    public AppUser getOwner() {
+        return null;
+    }
+}

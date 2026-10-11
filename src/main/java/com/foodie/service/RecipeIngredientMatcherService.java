@@ -1,7 +1,11 @@
 package com.foodie.service;
 
-import com.foodie.model.Product;
+import com.foodie.controller.dto.MatchedIngredient;
+import com.foodie.controller.dto.ProductResolutionRequest;
+import com.foodie.model.db.Product;
+import com.foodie.model.RecipeExtract;
 import com.foodie.model.Unit;
+import com.foodie.util.TextMatchingUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -15,11 +19,11 @@ import java.util.List;
  * Maps each extracted {@link RecipeExtract.IngredientLine} to an existing
  * household {@link Product}, or creates a new one if no close match is found.
  *
- * <p>Matching strategy (same word-score approach as VoiceLogController):
+ * <p>Matching strategy uses word-overlap scoring via {@link TextMatchingUtils}:
  * <ol>
  *   <li>Split both the ingredient name and every product name into words.</li>
  *   <li>Score = total length of shared words longer than 2 chars.</li>
- *   <li>Accept the best match when score ≥ 4 (avoids false positives on tiny words).</li>
+ *   <li>Accept the best match when score ≥ {@link TextMatchingUtils#MIN_MATCH_SCORE}.</li>
  *   <li>If no match → create a new Product and auto-fill nutrition via Open Food Facts.</li>
  * </ol>
  */
@@ -29,17 +33,6 @@ import java.util.List;
 public class RecipeIngredientMatcherService {
 
     private final ProductService productService;
-
-    /**
-     * Result for a single ingredient line — carries enough info for the
-     * preview page and for the final save step.
-     */
-    public record MatchedIngredient(
-            RecipeExtract.IngredientLine line,   // original AI extract
-            Product product,                      // matched or newly-created Product
-            BigDecimal quantity,                  // normalised quantity (in product's unit)
-            boolean isNew                         // true → will be created on confirm
-    ) {}
 
     // ── Public API ─────────────────────────────────────────────────────────
 
@@ -92,6 +85,39 @@ public class RecipeIngredientMatcherService {
     }
 
     /**
+     * Resolve product IDs from the import preview form.
+     * Existing products (id > 0) are returned as-is.
+     * New products (id == 0) are created and their new IDs are returned.
+     *
+     * @param request the resolution request containing product IDs, names, and units
+     * @return list of resolved product IDs (all existing in the database)
+     */
+    @Transactional
+    public List<Long> resolveProductIds(ProductResolutionRequest request) {
+        List<Long> resolvedIds = new ArrayList<>();
+
+        for (int i = 0; i < request.productIds().size(); i++) {
+            long pid = request.productIds().get(i);
+
+            if (pid > 0) {
+                resolvedIds.add(pid);
+            } else {
+                // New product — build and save
+                Product newProduct = Product.builder()
+                        .name(request.productNames().get(i))
+                        .unit(inferUnit(request.productUnits().get(i)))
+                        .pricePerUnit(BigDecimal.ZERO)
+                        .build();
+                Product saved = productService.save(newProduct);
+                resolvedIds.add(saved.getId());
+                log.info("Created product '{}' (id={})", saved.getName(), saved.getId());
+            }
+        }
+
+        return resolvedIds;
+    }
+
+    /**
      * Expose all household products for the preview page's product picker.
      */
     public List<Product> getAllProducts() {
@@ -101,22 +127,10 @@ public class RecipeIngredientMatcherService {
     // ── Matching logic ─────────────────────────────────────────────────────
 
     private MatchedIngredient match(RecipeExtract.IngredientLine line, List<Product> products) {
-        String ingredientLower = line.name().toLowerCase();
+        Product best = TextMatchingUtils.findBestMatch(products, line.name(), Product::getName);
 
-        Product best      = null;
-        int     bestScore = 0;
-
-        for (Product product : products) {
-            int score = wordOverlapScore(ingredientLower, product.getName().toLowerCase());
-            if (score > bestScore) {
-                bestScore = score;
-                best = product;
-            }
-        }
-
-        // Accept match only if score is meaningful (avoids matching "oil" to "olive oil cake")
-        if (best != null && bestScore >= 4) {
-            log.debug("Matched '{}' → '{}' (score={})", line.name(), best.getName(), bestScore);
+        if (best != null) {
+            log.debug("Matched '{}' → '{}'", line.name(), best.getName());
             return new MatchedIngredient(line, best, line.quantity(), false);
         }
 
@@ -124,25 +138,6 @@ public class RecipeIngredientMatcherService {
         log.info("No match for '{}' — will create new product", line.name());
         Product newProduct = buildNewProduct(line);
         return new MatchedIngredient(line, newProduct, line.quantity(), true);
-    }
-
-    /**
-     * Word-overlap score: sum of lengths of shared words longer than 2 characters.
-     * Identical to the approach in VoiceLogController.
-     */
-    private int wordOverlapScore(String ingredient, String productName) {
-        String[] ingredientWords = ingredient.split("\\s+");
-        int score = 0;
-        for (String word : ingredientWords) {
-            if (word.length() > 2 && productName.contains(word)) {
-                score += word.length();
-            }
-        }
-        // Also check full substring in both directions for short names
-        if (productName.contains(ingredient) || ingredient.contains(productName)) {
-            score = Math.max(score, productName.length());
-        }
-        return score;
     }
 
     /**
@@ -163,8 +158,12 @@ public class RecipeIngredientMatcherService {
         // household is set by ProductService.save() via CurrentUserService
     }
 
+    /**
+     * Infer the appropriate {@link Unit} from a raw unit string.
+     * Handles various unit formats from recipes and form submissions.
+     */
     private Unit inferUnit(String rawUnit) {
-        if (rawUnit == null) return Unit.KG;
+        if (rawUnit == null || rawUnit.isBlank()) return Unit.KG;
         return switch (rawUnit.toLowerCase().trim()) {
             case "piece", "pieces", "pc", "pcs",
                  "slice", "slices", "clove", "cloves",
@@ -172,8 +171,8 @@ public class RecipeIngredientMatcherService {
             case "l", "liter", "liters", "litre", "litres",
                  "ml", "milliliter", "milliliters",
                  "cup", "cups", "tbsp", "tablespoon",
-                 "tsp", "teaspoon"                   -> Unit.LITER;
-            default                                  -> Unit.KG;
+                 "tsp", "teaspoon" -> Unit.LITER;
+            default -> Unit.KG;
         };
     }
 

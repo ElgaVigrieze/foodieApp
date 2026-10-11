@@ -1,156 +1,88 @@
 package com.foodie.service;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.foodie.model.Product;
-import lombok.Data;
+import com.foodie.client.OpenFoodFactsClient;
+import com.foodie.client.OpenFoodFactsClient.BarcodeResponse;
+import com.foodie.client.OpenFoodFactsClient.Nutriments;
+import com.foodie.client.OpenFoodFactsClient.SearchResponse;
+import com.foodie.controller.dto.NutritionBarcodeResult;
+import com.foodie.controller.dto.NutritionInfo;
+import com.foodie.model.db.Product;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestClient;
 
 import java.math.BigDecimal;
-import java.util.List;
 import java.util.Optional;
 
 /**
- * Fetches nutrition data from Open Food Facts API.
- * https://wiki.openfoodfacts.org/API
+ * Service for looking up nutrition data.
+ * Delegates HTTP calls to the OpenFoodFactsClient and handles business logic.
  */
 @Service
 @Slf4j
+@RequiredArgsConstructor
 public class NutritionLookupService {
 
-    private static final String SEARCH_URL = "https://world.openfoodfacts.org/cgi/search.pl";
-
-    private final RestClient restClient;
-
-    public NutritionLookupService() {
-        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
-        factory.setConnectTimeout(5000);
-        factory.setReadTimeout(10000);
-
-        this.restClient = RestClient.builder()
-                .requestFactory(factory)
-                .build();
-    }
+    private final OpenFoodFactsClient openFoodFactsClient;
 
     /**
-     * Search Open Food Facts by product name and return nutrition per 100g.
-     * Returns empty if no result found or API is unreachable.
+     * Search for nutrition info by product name.
+     * Returns the first product with valid nutrition data.
+     *
+     * @param productName the product name to search for
+     * @return nutrition info per 100g, or empty if not found
      */
     public Optional<NutritionInfo> lookup(String productName) {
-        try {
-            SearchResponse response = restClient.get()
-                    .uri(SEARCH_URL + "?search_terms={name}&search_simple=1&action=process&json=1&page_size=5&fields=product_name,nutriments", productName)
-                    .retrieve()
-                    .body(SearchResponse.class);
+        Optional<SearchResponse> response = openFoodFactsClient.searchByName(productName);
 
-            if (response == null || response.products == null || response.products.isEmpty()) {
-                log.info("No results found for: {}", productName);
-                return Optional.empty();
-            }
-
-            for (OpenFoodFactsProduct product : response.products) {
-                if (product.nutriments != null && product.nutriments.hasData()) {
-                    NutritionInfo info = NutritionInfo.from(product.nutriments);
-                    log.info("Found nutrition for '{}': {} kcal, {}g protein", productName, info.calories, info.protein);
-                    return Optional.of(info);
-                }
-            }
-
-            log.info("No nutrition data in results for: {}", productName);
-            return Optional.empty();
-
-        } catch (Exception e) {
-            log.warn("Failed to lookup nutrition for '{}': {}", productName, e.getMessage());
+        if (response.isEmpty()) {
             return Optional.empty();
         }
+
+        for (var product : response.get().getProducts()) {
+            if (product.getNutriments() != null && product.getNutriments().hasData()) {
+                NutritionInfo info = mapToNutritionInfo(product.getNutriments());
+                log.info("Found nutrition for '{}': {} kcal, {}g protein", productName, info.calories(), info.protein());
+                return Optional.of(info);
+            }
+        }
+
+        log.info("No nutrition data in results for: {}", productName);
+        return Optional.empty();
     }
 
     /**
-     * Lookup a product by barcode on Open Food Facts.
-     * Returns product name + nutrition info if found.
+     * Lookup a product by barcode.
+     *
+     * @param barcode the product barcode (EAN/UPC)
+     * @return barcode result with name and nutrition, or empty if not found
      */
-    public Optional<BarcodeResult> lookupBarcode(String barcode) {
-        try {
-            String url = "https://world.openfoodfacts.org/api/v2/product/" + barcode + ".json?fields=product_name,nutriments,brands,quantity";
-            String response = restClient.get()
-                    .uri(url)
-                    .retrieve()
-                    .body(String.class);
-
-            if (response == null || !response.contains("\"status\":1")) {
-                log.info("Barcode not found on Open Food Facts: {}", barcode);
-                return Optional.empty();
-            }
-
-            // Parse product name
-            String name = extractJsonString(response, "product_name");
-            String brands = extractJsonString(response, "brands");
-            String quantity = extractJsonString(response, "quantity");
-
-            if (name == null || name.isBlank()) {
-                name = brands != null ? brands : "Unknown product";
-            } else if (brands != null && !brands.isBlank() && !name.toLowerCase().contains(brands.toLowerCase())) {
-                name = brands + " " + name;
-            }
-
-            // Parse nutriments
-            BigDecimal calories = extractJsonNumber(response, "energy-kcal_100g");
-            BigDecimal protein = extractJsonNumber(response, "proteins_100g");
-            BigDecimal carbs = extractJsonNumber(response, "carbohydrates_100g");
-            BigDecimal fat = extractJsonNumber(response, "fat_100g");
-            BigDecimal fiber = extractJsonNumber(response, "fiber_100g");
-            BigDecimal sugar = extractJsonNumber(response, "sugars_100g");
-
-            log.info("Found barcode {}: {} ({} kcal/100g)", barcode, name, calories);
-            return Optional.of(new BarcodeResult(name, quantity, calories, protein, carbs, fat, fiber, sugar));
-
-        } catch (Exception e) {
-            log.warn("Failed to lookup barcode '{}': {}", barcode, e.getMessage());
-            return Optional.empty();
-        }
+    public Optional<NutritionBarcodeResult> lookupBarcode(String barcode) {
+        return openFoodFactsClient.getByBarcode(barcode)
+                .map(this::mapToBarcodeResult);
     }
-
-    private String extractJsonString(String json, String key) {
-        java.util.regex.Pattern p = java.util.regex.Pattern.compile("\"" + key + "\"\\s*:\\s*\"([^\"]*)\"");
-        java.util.regex.Matcher m = p.matcher(json);
-        return m.find() ? m.group(1) : null;
-    }
-
-    private BigDecimal extractJsonNumber(String json, String key) {
-        java.util.regex.Pattern p = java.util.regex.Pattern.compile("\"" + key + "\"\\s*:\\s*([\\d.]+)");
-        java.util.regex.Matcher m = p.matcher(json);
-        return m.find() ? new BigDecimal(m.group(1)) : null;
-    }
-
-    public record BarcodeResult(
-            String name,
-            String quantity,
-            BigDecimal calories,
-            BigDecimal protein,
-            BigDecimal carbs,
-            BigDecimal fat,
-            BigDecimal fiber,
-            BigDecimal sugar
-    ) {}
 
     /**
      * Fill in empty nutrition fields on a Product from Open Food Facts.
      * Only fills fields that are currently null.
+     *
+     * @param product the product to enrich
      */
     public void autoFillNutrition(Product product) {
-        if (product.getName() == null || product.getName().isBlank()) return;
-        if (hasAllNutritionFilled(product)) return;
+        if (product.getName() == null || product.getName().isBlank()) {
+            return;
+        }
+        if (hasAllNutritionFilled(product)) {
+            return;
+        }
 
         lookup(product.getName()).ifPresent(info -> {
-            if (product.getCalories() == null) product.setCalories(info.calories);
-            if (product.getProtein() == null) product.setProtein(info.protein);
-            if (product.getCarbs() == null) product.setCarbs(info.carbs);
-            if (product.getFat() == null) product.setFat(info.fat);
-            if (product.getFiber() == null) product.setFiber(info.fiber);
-            if (product.getSugar() == null) product.setSugar(info.sugar);
+            if (product.getCalories() == null) product.setCalories(info.calories());
+            if (product.getProtein() == null) product.setProtein(info.protein());
+            if (product.getCarbs() == null) product.setCarbs(info.carbs());
+            if (product.getFat() == null) product.setFat(info.fat());
+            if (product.getFiber() == null) product.setFiber(info.fiber());
+            if (product.getSugar() == null) product.setSugar(info.sugar());
         });
     }
 
@@ -163,72 +95,31 @@ public class NutritionLookupService {
                 && product.getSugar() != null;
     }
 
-    // ── Response DTOs ──────────────────────────────────────────────────────
-
-    @Data
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    public static class SearchResponse {
-        private List<OpenFoodFactsProduct> products;
+    private NutritionInfo mapToNutritionInfo(Nutriments n) {
+        return new NutritionInfo(
+                toBigDecimal(n.getEnergyKcal100g()),
+                toBigDecimal(n.getProteins100g()),
+                toBigDecimal(n.getCarbohydrates100g()),
+                toBigDecimal(n.getFat100g()),
+                toBigDecimal(n.getFiber100g()),
+                toBigDecimal(n.getSugars100g())
+        );
     }
 
-    @Data
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    public static class OpenFoodFactsProduct {
-        @JsonProperty("product_name")
-        private String productName;
-        private Nutriments nutriments;
+    private NutritionBarcodeResult mapToBarcodeResult(BarcodeResponse response) {
+        return new NutritionBarcodeResult(
+                response.getName(),
+                response.getQuantity(),
+                response.getCalories(),
+                response.getProtein(),
+                response.getCarbs(),
+                response.getFat(),
+                response.getFiber(),
+                response.getSugar()
+        );
     }
 
-    @Data
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    public static class Nutriments {
-        @JsonProperty("energy-kcal_100g")
-        private Double energyKcal100g;
-
-        @JsonProperty("proteins_100g")
-        private Double proteins100g;
-
-        @JsonProperty("carbohydrates_100g")
-        private Double carbohydrates100g;
-
-        @JsonProperty("fat_100g")
-        private Double fat100g;
-
-        @JsonProperty("fiber_100g")
-        private Double fiber100g;
-
-        @JsonProperty("sugars_100g")
-        private Double sugars100g;
-
-        public boolean hasData() {
-            return energyKcal100g != null || proteins100g != null || fat100g != null;
-        }
-    }
-
-    /**
-     * Normalized nutrition info per 100g.
-     */
-    public record NutritionInfo(
-            BigDecimal calories,
-            BigDecimal protein,
-            BigDecimal carbs,
-            BigDecimal fat,
-            BigDecimal fiber,
-            BigDecimal sugar
-    ) {
-        public static NutritionInfo from(Nutriments n) {
-            return new NutritionInfo(
-                    toBigDecimal(n.energyKcal100g),
-                    toBigDecimal(n.proteins100g),
-                    toBigDecimal(n.carbohydrates100g),
-                    toBigDecimal(n.fat100g),
-                    toBigDecimal(n.fiber100g),
-                    toBigDecimal(n.sugars100g)
-            );
-        }
-
-        private static BigDecimal toBigDecimal(Double value) {
-            return value != null ? BigDecimal.valueOf(value) : BigDecimal.ZERO;
-        }
+    private static BigDecimal toBigDecimal(BigDecimal value) {
+        return value != null ? value : BigDecimal.ZERO;
     }
 }

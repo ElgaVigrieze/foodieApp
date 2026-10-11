@@ -1,5 +1,6 @@
-package com.foodie.model;
+package com.foodie.model.db;
 
+import com.foodie.model.HouseholdRole;
 import jakarta.persistence.*;
 import lombok.*;
 import java.math.BigDecimal;
