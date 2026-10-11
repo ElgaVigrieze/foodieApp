@@ -1,6 +1,5 @@
 package com.foodie.client;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
@@ -157,34 +156,52 @@ public class CloudflareAiClient {
     /**
      * Extract the response text from Cloudflare API envelope.
      * Handles multiple response formats:
-     * 1. {"result":{"response":"..."}} — Workers AI text format
-     * 2. {"result":{"choices":[{"message":{"content":"..."}}]}} — OpenAI-compatible format
+     * 1. {"result":{"response":"..."}} — Workers AI text format (string)
+     * 2. {"result":{"response":{"response":"..."}}} — Nested response format
+     * 3. {"result":{"choices":[{"message":{"content":"..."}}]}} — OpenAI-compatible format
      */
     private Optional<String> extractResponseText(String json) {
         if (json == null) return Optional.empty();
 
         try {
-            CloudflareResponse response = objectMapper.readValue(json, CloudflareResponse.class);
+            var tree = objectMapper.readTree(json);
+            var result = tree.path("result");
 
-            if (response.getResult() == null) {
+            if (result.isMissingNode()) {
                 log.warn("No result in Cloudflare response");
                 return Optional.empty();
             }
 
-            // Format 1: result.response (older Workers AI format)
-            if (response.getResult().getResponse() != null) {
-                return Optional.of(response.getResult().getResponse());
-            }
-
-            // Format 2: result.choices[].message.content (OpenAI-compatible)
-            if (response.getResult().getChoices() != null && !response.getResult().getChoices().isEmpty()) {
-                Choice firstChoice = response.getResult().getChoices().get(0);
-                if (firstChoice.getMessage() != null && firstChoice.getMessage().getContent() != null) {
-                    return Optional.of(firstChoice.getMessage().getContent());
+            // Format 1: result.response as string
+            var response = result.path("response");
+            if (!response.isMissingNode()) {
+                if (response.isTextual()) {
+                    return Optional.of(response.asText());
+                }
+                // Format 2: result.response as object with nested response field
+                if (response.isObject()) {
+                    var nestedResponse = response.path("response");
+                    if (nestedResponse.isTextual()) {
+                        return Optional.of(nestedResponse.asText());
+                    }
+                    // Try content field as fallback
+                    var content = response.path("content");
+                    if (content.isTextual()) {
+                        return Optional.of(content.asText());
+                    }
                 }
             }
 
-            log.warn("Could not extract response text from Cloudflare response");
+            // Format 3: result.choices[].message.content (OpenAI-compatible)
+            var choices = result.path("choices");
+            if (choices.isArray() && !choices.isEmpty()) {
+                var content = choices.get(0).path("message").path("content");
+                if (content.isTextual()) {
+                    return Optional.of(content.asText());
+                }
+            }
+
+            log.warn("Could not extract response text from Cloudflare response: {}", json);
             return Optional.empty();
         } catch (Exception e) {
             log.warn("Failed to parse Cloudflare response: {}", e.getMessage());
@@ -218,34 +235,6 @@ public class CloudflareAiClient {
     @lombok.AllArgsConstructor
     private static class Message {
         private String role;
-        private String content;
-    }
-
-    // ── Response DTOs ──────────────────────────────────────────────────────
-
-    @Data
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    public static class CloudflareResponse {
-        private boolean success;
-        private CloudflareResult result;
-    }
-
-    @Data
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    public static class CloudflareResult {
-        private String response;
-        private List<Choice> choices;
-    }
-
-    @Data
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    public static class Choice {
-        private ChoiceMessage message;
-    }
-
-    @Data
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    public static class ChoiceMessage {
         private String content;
     }
 }
