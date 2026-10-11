@@ -1,10 +1,14 @@
 package com.foodie.service;
 
+import com.foodie.client.CloudflareAiClient;
 import com.foodie.model.RecipeExtract;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 
@@ -17,14 +21,18 @@ import static org.junit.jupiter.api.Assertions.*;
  * They don't call the actual AI API - instead they test the parseAiResponse() method
  * with realistic AI output samples to catch regressions in parsing logic.
  */
+@ExtendWith(MockitoExtension.class)
 class RecipeScraperServiceTest {
+
+    @Mock
+    private CloudflareAiClient cloudflareAiClient;
 
     private RecipeScraperService service;
 
     @BeforeEach
     void setUp() {
-        // Create service without Cloudflare credentials - we're testing parsing, not API calls
-        service = new RecipeScraperService("", "");
+        // Create service with mocked client and default timeouts
+        service = new RecipeScraperService(cloudflareAiClient, 15000, 60000);
     }
 
     @Nested

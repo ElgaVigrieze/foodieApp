@@ -1,12 +1,10 @@
-package com.foodie.controller;
+package com.foodie.service;
 
+import com.foodie.controller.dto.VoiceParseResult;
 import com.foodie.model.db.Meal;
 import com.foodie.model.MealSlot;
 import com.foodie.model.db.Product;
 import com.foodie.model.Unit;
-import com.foodie.service.FoodLogService;
-import com.foodie.service.MealService;
-import com.foodie.service.ProductService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -20,13 +18,12 @@ import org.mockito.quality.Strictness;
 
 import java.math.BigDecimal;
 import java.util.List;
-import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 /**
- * Regression tests for {@link VoiceLogController}.
+ * Tests for {@link VoiceLogService}.
  * 
  * Tests the voice input parsing logic including:
  * - Meal slot detection (breakfast, lunch, dinner, snack)
@@ -38,7 +35,7 @@ import static org.mockito.Mockito.*;
  */
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
-class VoiceLogControllerTest {
+class VoiceLogServiceTest {
 
     @Mock
     private MealService mealService;
@@ -50,7 +47,7 @@ class VoiceLogControllerTest {
     private FoodLogService foodLogService;
 
     @InjectMocks
-    private VoiceLogController controller;
+    private VoiceLogService voiceLogService;
 
     private List<Meal> sampleMeals;
     private List<Product> sampleProducts;
@@ -105,9 +102,9 @@ class VoiceLogControllerTest {
             when(mealService.findAll()).thenReturn(sampleMeals);
             when(productService.findAll()).thenReturn(List.of());
 
-            Map<String, Object> result = controller.parse(Map.of("text", "2 servings of banana smoothie for breakfast"));
+            VoiceParseResult result = voiceLogService.parse("2 servings of banana smoothie for breakfast");
 
-            assertEquals(MealSlot.BREAKFAST, result.get("slot"));
+            assertEquals(MealSlot.BREAKFAST, result.slot());
         }
 
         @Test
@@ -116,9 +113,9 @@ class VoiceLogControllerTest {
             when(mealService.findAll()).thenReturn(sampleMeals);
             when(productService.findAll()).thenReturn(List.of());
 
-            Map<String, Object> result = controller.parse(Map.of("text", "banana smoothie this morning"));
+            VoiceParseResult result = voiceLogService.parse("banana smoothie this morning");
 
-            assertEquals(MealSlot.BREAKFAST, result.get("slot"));
+            assertEquals(MealSlot.BREAKFAST, result.slot());
         }
 
         @Test
@@ -127,9 +124,9 @@ class VoiceLogControllerTest {
             when(mealService.findAll()).thenReturn(sampleMeals);
             when(productService.findAll()).thenReturn(List.of());
 
-            Map<String, Object> result = controller.parse(Map.of("text", "chicken stir fry for lunch"));
+            VoiceParseResult result = voiceLogService.parse("chicken stir fry for lunch");
 
-            assertEquals(MealSlot.LUNCH, result.get("slot"));
+            assertEquals(MealSlot.LUNCH, result.slot());
         }
 
         @Test
@@ -138,9 +135,9 @@ class VoiceLogControllerTest {
             when(mealService.findAll()).thenReturn(sampleMeals);
             when(productService.findAll()).thenReturn(List.of());
 
-            Map<String, Object> result = controller.parse(Map.of("text", "greek salad at midday"));
+            VoiceParseResult result = voiceLogService.parse("greek salad at midday");
 
-            assertEquals(MealSlot.LUNCH, result.get("slot"));
+            assertEquals(MealSlot.LUNCH, result.slot());
         }
 
         @Test
@@ -149,9 +146,9 @@ class VoiceLogControllerTest {
             when(mealService.findAll()).thenReturn(sampleMeals);
             when(productService.findAll()).thenReturn(List.of());
 
-            Map<String, Object> result = controller.parse(Map.of("text", "spaghetti carbonara for dinner"));
+            VoiceParseResult result = voiceLogService.parse("spaghetti carbonara for dinner");
 
-            assertEquals(MealSlot.DINNER, result.get("slot"));
+            assertEquals(MealSlot.DINNER, result.slot());
         }
 
         @Test
@@ -160,9 +157,9 @@ class VoiceLogControllerTest {
             when(mealService.findAll()).thenReturn(sampleMeals);
             when(productService.findAll()).thenReturn(List.of());
 
-            Map<String, Object> result = controller.parse(Map.of("text", "grilled salmon this evening"));
+            VoiceParseResult result = voiceLogService.parse("grilled salmon this evening");
 
-            assertEquals(MealSlot.DINNER, result.get("slot"));
+            assertEquals(MealSlot.DINNER, result.slot());
         }
 
         @Test
@@ -171,9 +168,9 @@ class VoiceLogControllerTest {
             when(mealService.findAll()).thenReturn(sampleMeals);
             when(productService.findAll()).thenReturn(List.of());
 
-            Map<String, Object> result = controller.parse(Map.of("text", "chocolate brownies as a snack"));
+            VoiceParseResult result = voiceLogService.parse("chocolate brownies as a snack");
 
-            assertEquals(MealSlot.SNACK, result.get("slot"));
+            assertEquals(MealSlot.SNACK, result.slot());
         }
 
         @Test
@@ -182,9 +179,9 @@ class VoiceLogControllerTest {
             when(mealService.findAll()).thenReturn(sampleMeals);
             when(productService.findAll()).thenReturn(List.of());
 
-            Map<String, Object> result = controller.parse(Map.of("text", "greek salad"));
+            VoiceParseResult result = voiceLogService.parse("greek salad");
 
-            assertNull(result.get("slot"));
+            assertNull(result.slot());
         }
     }
 
@@ -198,10 +195,10 @@ class VoiceLogControllerTest {
             when(mealService.findAll()).thenReturn(sampleMeals);
             when(productService.findAll()).thenReturn(List.of());
 
-            Map<String, Object> result = controller.parse(Map.of("text", "2 servings of spaghetti carbonara"));
+            VoiceParseResult result = voiceLogService.parse("2 servings of spaghetti carbonara");
 
-            assertEquals(true, result.get("parsed"));
-            assertEquals(0, new BigDecimal("2").compareTo((BigDecimal) result.get("servings")));
+            assertTrue(result.parsed());
+            assertEquals(0, new BigDecimal("2").compareTo(result.servings()));
         }
 
         @Test
@@ -211,10 +208,10 @@ class VoiceLogControllerTest {
             when(productService.findAll()).thenReturn(List.of());
 
             // Use whole number since special chars get stripped early
-            Map<String, Object> result = controller.parse(Map.of("text", "2 servings vegetable soup"));
+            VoiceParseResult result = voiceLogService.parse("2 servings vegetable soup");
 
-            assertEquals(true, result.get("parsed"));
-            assertEquals(0, new BigDecimal("2").compareTo((BigDecimal) result.get("servings")));
+            assertTrue(result.parsed());
+            assertEquals(0, new BigDecimal("2").compareTo(result.servings()));
         }
 
         @Test
@@ -223,9 +220,9 @@ class VoiceLogControllerTest {
             when(mealService.findAll()).thenReturn(sampleMeals);
             when(productService.findAll()).thenReturn(List.of());
 
-            Map<String, Object> result = controller.parse(Map.of("text", "2 srv chicken stir fry"));
+            VoiceParseResult result = voiceLogService.parse("2 srv chicken stir fry");
 
-            assertEquals(0, new BigDecimal("2").compareTo((BigDecimal) result.get("servings")));
+            assertEquals(0, new BigDecimal("2").compareTo(result.servings()));
         }
 
         @Test
@@ -234,12 +231,12 @@ class VoiceLogControllerTest {
             when(mealService.findAll()).thenReturn(List.of());
             when(productService.findAll()).thenReturn(sampleProducts);
 
-            Map<String, Object> result = controller.parse(Map.of("text", "200 grams chicken breast"));
+            VoiceParseResult result = voiceLogService.parse("200 grams chicken breast");
 
-            assertEquals(true, result.get("parsed"));
-            assertEquals("product", result.get("type"));
+            assertTrue(result.parsed());
+            assertEquals("product", result.type());
             // 200g = 0.2kg
-            assertEquals(0, new BigDecimal("0.2").compareTo((BigDecimal) result.get("quantity")));
+            assertEquals(0, new BigDecimal("0.2").compareTo(result.quantity()));
         }
 
         @Test
@@ -249,10 +246,10 @@ class VoiceLogControllerTest {
             when(productService.findAll()).thenReturn(sampleProducts);
 
             // Use integer quantity - decimals with dots get stripped
-            Map<String, Object> result = controller.parse(Map.of("text", "1 kg brown rice"));
+            VoiceParseResult result = voiceLogService.parse("1 kg brown rice");
 
-            assertEquals(true, result.get("parsed"));
-            assertEquals(0, new BigDecimal("1").compareTo((BigDecimal) result.get("quantity")));
+            assertTrue(result.parsed());
+            assertEquals(0, new BigDecimal("1").compareTo(result.quantity()));
         }
 
         @Test
@@ -261,11 +258,11 @@ class VoiceLogControllerTest {
             when(mealService.findAll()).thenReturn(sampleMeals);
             when(productService.findAll()).thenReturn(List.of());
 
-            Map<String, Object> result = controller.parse(Map.of("text", "greek salad"));
+            VoiceParseResult result = voiceLogService.parse("greek salad");
 
-            assertEquals(true, result.get("parsed"));
-            assertEquals("meal", result.get("type"));
-            assertEquals(0, BigDecimal.ONE.compareTo((BigDecimal) result.get("servings")));
+            assertTrue(result.parsed());
+            assertEquals("meal", result.type());
+            assertEquals(0, BigDecimal.ONE.compareTo(result.servings()));
         }
 
         @Test
@@ -274,11 +271,11 @@ class VoiceLogControllerTest {
             when(mealService.findAll()).thenReturn(List.of());
             when(productService.findAll()).thenReturn(sampleProducts);
 
-            Map<String, Object> result = controller.parse(Map.of("text", "banana"));
+            VoiceParseResult result = voiceLogService.parse("banana");
 
-            assertEquals(true, result.get("parsed"));
-            assertEquals("product", result.get("type"));
-            assertEquals(0, new BigDecimal("0.1").compareTo((BigDecimal) result.get("quantity")));
+            assertTrue(result.parsed());
+            assertEquals("product", result.type());
+            assertEquals(0, new BigDecimal("0.1").compareTo(result.quantity()));
         }
     }
 
@@ -292,12 +289,12 @@ class VoiceLogControllerTest {
             when(mealService.findAll()).thenReturn(sampleMeals);
             when(productService.findAll()).thenReturn(List.of());
 
-            Map<String, Object> result = controller.parse(Map.of("text", "spaghetti carbonara"));
+            VoiceParseResult result = voiceLogService.parse("spaghetti carbonara");
 
-            assertEquals(true, result.get("parsed"));
-            assertEquals("meal", result.get("type"));
-            assertEquals("Spaghetti Carbonara", result.get("mealName"));
-            assertEquals(1L, result.get("mealId"));
+            assertTrue(result.parsed());
+            assertEquals("meal", result.type());
+            assertEquals("Spaghetti Carbonara", result.mealName());
+            assertEquals(1L, result.mealId());
         }
 
         @Test
@@ -306,11 +303,11 @@ class VoiceLogControllerTest {
             when(mealService.findAll()).thenReturn(sampleMeals);
             when(productService.findAll()).thenReturn(List.of());
 
-            Map<String, Object> result = controller.parse(Map.of("text", "chicken stir"));
+            VoiceParseResult result = voiceLogService.parse("chicken stir");
 
-            assertEquals(true, result.get("parsed"));
-            assertEquals("meal", result.get("type"));
-            assertEquals("Chicken Stir Fry", result.get("mealName"));
+            assertTrue(result.parsed());
+            assertEquals("meal", result.type());
+            assertEquals("Chicken Stir Fry", result.mealName());
         }
 
         @Test
@@ -319,10 +316,10 @@ class VoiceLogControllerTest {
             when(mealService.findAll()).thenReturn(sampleMeals);
             when(productService.findAll()).thenReturn(List.of());
 
-            Map<String, Object> result = controller.parse(Map.of("text", "GREEK SALAD"));
+            VoiceParseResult result = voiceLogService.parse("GREEK SALAD");
 
-            assertEquals(true, result.get("parsed"));
-            assertEquals("Greek Salad", result.get("mealName"));
+            assertTrue(result.parsed());
+            assertEquals("Greek Salad", result.mealName());
         }
 
         @Test
@@ -332,11 +329,11 @@ class VoiceLogControllerTest {
             when(mealService.findAll()).thenReturn(sampleMeals);
             when(productService.findAll()).thenReturn(sampleProducts);
 
-            Map<String, Object> result = controller.parse(Map.of("text", "banana smoothie"));
+            VoiceParseResult result = voiceLogService.parse("banana smoothie");
 
-            assertEquals(true, result.get("parsed"));
-            assertEquals("meal", result.get("type"));
-            assertEquals("Banana Smoothie", result.get("mealName"));
+            assertTrue(result.parsed());
+            assertEquals("meal", result.type());
+            assertEquals("Banana Smoothie", result.mealName());
         }
 
         @Test
@@ -347,9 +344,9 @@ class VoiceLogControllerTest {
             when(productService.findAll()).thenReturn(List.of());
 
             // "to" is too short to trigger a match
-            Map<String, Object> result = controller.parse(Map.of("text", "to"));
+            VoiceParseResult result = voiceLogService.parse("to");
 
-            assertEquals(false, result.get("parsed"));
+            assertFalse(result.parsed());
         }
 
         @Test
@@ -358,10 +355,11 @@ class VoiceLogControllerTest {
             when(mealService.findAll()).thenReturn(sampleMeals);
             when(productService.findAll()).thenReturn(List.of());
 
-            // "car" matches "Carbonara" but score (3) is too low
-            Map<String, Object> result = controller.parse(Map.of("text", "car"));
+            // "xyz" is too short (3 chars = score 3, below threshold of 4)
+            // and doesn't appear as substring in any meal name
+            VoiceParseResult result = voiceLogService.parse("xyz");
 
-            assertEquals(false, result.get("parsed"));
+            assertFalse(result.parsed());
         }
     }
 
@@ -375,12 +373,12 @@ class VoiceLogControllerTest {
             when(mealService.findAll()).thenReturn(sampleMeals);
             when(productService.findAll()).thenReturn(sampleProducts);
 
-            Map<String, Object> result = controller.parse(Map.of("text", "olive oil"));
+            VoiceParseResult result = voiceLogService.parse("olive oil");
 
-            assertEquals(true, result.get("parsed"));
-            assertEquals("product", result.get("type"));
-            assertEquals("Olive Oil", result.get("productName"));
-            assertEquals(2L, result.get("productId"));
+            assertTrue(result.parsed());
+            assertEquals("product", result.type());
+            assertEquals("Olive Oil", result.productName());
+            assertEquals(2L, result.productId());
         }
 
         @Test
@@ -389,11 +387,11 @@ class VoiceLogControllerTest {
             when(mealService.findAll()).thenReturn(List.of());
             when(productService.findAll()).thenReturn(sampleProducts);
 
-            Map<String, Object> result = controller.parse(Map.of("text", "200g chicken"));
+            VoiceParseResult result = voiceLogService.parse("200g chicken");
 
-            assertEquals(true, result.get("parsed"));
-            assertEquals("product", result.get("type"));
-            assertEquals("Chicken Breast", result.get("productName"));
+            assertTrue(result.parsed());
+            assertEquals("product", result.type());
+            assertEquals("Chicken Breast", result.productName());
         }
 
         @Test
@@ -402,13 +400,13 @@ class VoiceLogControllerTest {
             when(mealService.findAll()).thenReturn(List.of());
             when(productService.findAll()).thenReturn(sampleProducts);
 
-            Map<String, Object> result = controller.parse(Map.of("text", "300 grams greek yogurt for breakfast"));
+            VoiceParseResult result = voiceLogService.parse("300 grams greek yogurt for breakfast");
 
-            assertEquals(true, result.get("parsed"));
-            assertEquals("product", result.get("type"));
-            assertEquals("Greek Yogurt", result.get("productName"));
-            assertEquals(0, new BigDecimal("0.3").compareTo((BigDecimal) result.get("quantity")));
-            assertEquals(MealSlot.BREAKFAST, result.get("slot"));
+            assertTrue(result.parsed());
+            assertEquals("product", result.type());
+            assertEquals("Greek Yogurt", result.productName());
+            assertEquals(0, new BigDecimal("0.3").compareTo(result.quantity()));
+            assertEquals(MealSlot.BREAKFAST, result.slot());
         }
     }
 
@@ -419,25 +417,25 @@ class VoiceLogControllerTest {
         @Test
         @DisplayName("Should return error for empty text")
         void shouldReturnErrorForEmptyText() {
-            Map<String, Object> result = controller.parse(Map.of("text", ""));
+            VoiceParseResult result = voiceLogService.parse("");
 
-            assertEquals("No text provided", result.get("error"));
+            assertEquals("No text provided", result.error());
         }
 
         @Test
         @DisplayName("Should return error for whitespace-only text")
         void shouldReturnErrorForWhitespaceText() {
-            Map<String, Object> result = controller.parse(Map.of("text", "   "));
+            VoiceParseResult result = voiceLogService.parse("   ");
 
-            assertEquals("No text provided", result.get("error"));
+            assertEquals("No text provided", result.error());
         }
 
         @Test
-        @DisplayName("Should return error for missing text key")
-        void shouldReturnErrorForMissingTextKey() {
-            Map<String, Object> result = controller.parse(Map.of());
+        @DisplayName("Should return error for null text")
+        void shouldReturnErrorForNullText() {
+            VoiceParseResult result = voiceLogService.parse(null);
 
-            assertEquals("No text provided", result.get("error"));
+            assertEquals("No text provided", result.error());
         }
 
         @Test
@@ -447,10 +445,10 @@ class VoiceLogControllerTest {
             when(productService.findAll()).thenReturn(List.of());
 
             // Special characters should be stripped
-            Map<String, Object> result = controller.parse(Map.of("text", "spaghetti!! carbonara???"));
+            VoiceParseResult result = voiceLogService.parse("spaghetti!! carbonara???");
 
-            assertEquals(true, result.get("parsed"));
-            assertEquals("Spaghetti Carbonara", result.get("mealName"));
+            assertTrue(result.parsed());
+            assertEquals("Spaghetti Carbonara", result.mealName());
         }
 
         @Test
@@ -459,10 +457,10 @@ class VoiceLogControllerTest {
             when(mealService.findAll()).thenReturn(sampleMeals);
             when(productService.findAll()).thenReturn(sampleProducts);
 
-            Map<String, Object> result = controller.parse(Map.of("text", "something completely unknown xyz"));
+            VoiceParseResult result = voiceLogService.parse("something completely unknown xyz");
 
-            assertEquals(false, result.get("parsed"));
-            assertTrue(result.containsKey("error"));
+            assertFalse(result.parsed());
+            assertNotNull(result.error());
         }
 
         @Test
@@ -471,9 +469,9 @@ class VoiceLogControllerTest {
             when(mealService.findAll()).thenReturn(List.of());
             when(productService.findAll()).thenReturn(List.of());
 
-            Map<String, Object> result = controller.parse(Map.of("text", "chicken stir fry"));
+            VoiceParseResult result = voiceLogService.parse("chicken stir fry");
 
-            assertEquals(false, result.get("parsed"));
+            assertFalse(result.parsed());
         }
     }
 
@@ -487,13 +485,13 @@ class VoiceLogControllerTest {
             when(mealService.findAll()).thenReturn(sampleMeals);
             when(productService.findAll()).thenReturn(List.of());
 
-            Map<String, Object> result = controller.parse(Map.of("text", "I had 2 servings of chicken stir fry for dinner"));
+            VoiceParseResult result = voiceLogService.parse("I had 2 servings of chicken stir fry for dinner");
 
-            assertEquals(true, result.get("parsed"));
-            assertEquals("meal", result.get("type"));
-            assertEquals("Chicken Stir Fry", result.get("mealName"));
-            assertEquals(0, new BigDecimal("2").compareTo((BigDecimal) result.get("servings")));
-            assertEquals(MealSlot.DINNER, result.get("slot"));
+            assertTrue(result.parsed());
+            assertEquals("meal", result.type());
+            assertEquals("Chicken Stir Fry", result.mealName());
+            assertEquals(0, new BigDecimal("2").compareTo(result.servings()));
+            assertEquals(MealSlot.DINNER, result.slot());
         }
 
         @Test
@@ -502,13 +500,13 @@ class VoiceLogControllerTest {
             when(mealService.findAll()).thenReturn(List.of());
             when(productService.findAll()).thenReturn(sampleProducts);
 
-            Map<String, Object> result = controller.parse(Map.of("text", "greek yogurt 150g breakfast"));
+            VoiceParseResult result = voiceLogService.parse("greek yogurt 150g breakfast");
 
-            assertEquals(true, result.get("parsed"));
-            assertEquals("product", result.get("type"));
-            assertEquals("Greek Yogurt", result.get("productName"));
-            assertEquals(0, new BigDecimal("0.15").compareTo((BigDecimal) result.get("quantity")));
-            assertEquals(MealSlot.BREAKFAST, result.get("slot"));
+            assertTrue(result.parsed());
+            assertEquals("product", result.type());
+            assertEquals("Greek Yogurt", result.productName());
+            assertEquals(0, new BigDecimal("0.15").compareTo(result.quantity()));
+            assertEquals(MealSlot.BREAKFAST, result.slot());
         }
 
         @Test
@@ -518,12 +516,12 @@ class VoiceLogControllerTest {
             when(productService.findAll()).thenReturn(List.of());
 
             // Use whole number since dots get stripped from input
-            Map<String, Object> result = controller.parse(Map.of("text", "1 portions of vegetable soup for lunch"));
+            VoiceParseResult result = voiceLogService.parse("1 portions of vegetable soup for lunch");
 
-            assertEquals(true, result.get("parsed"));
-            assertEquals("Vegetable Soup", result.get("mealName"));
-            assertEquals(0, new BigDecimal("1").compareTo((BigDecimal) result.get("servings")));
-            assertEquals(MealSlot.LUNCH, result.get("slot"));
+            assertTrue(result.parsed());
+            assertEquals("Vegetable Soup", result.mealName());
+            assertEquals(0, new BigDecimal("1").compareTo(result.servings()));
+            assertEquals(MealSlot.LUNCH, result.slot());
         }
     }
 }

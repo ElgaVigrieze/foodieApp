@@ -43,12 +43,12 @@ class NutritionLookupServiceTest {
         @DisplayName("Should return nutrition info when product found with valid data")
         void shouldReturnNutritionWhenFound() {
             Nutriments nutriments = new Nutriments();
-            nutriments.setEnergyKcal100g(250.0);
-            nutriments.setProteins100g(10.5);
-            nutriments.setCarbohydrates100g(30.0);
-            nutriments.setFat100g(12.0);
-            nutriments.setFiber100g(3.5);
-            nutriments.setSugars100g(8.0);
+            nutriments.setEnergyKcal100g(new BigDecimal("250"));
+            nutriments.setProteins100g(new BigDecimal("10.5"));
+            nutriments.setCarbohydrates100g(new BigDecimal("30"));
+            nutriments.setFat100g(new BigDecimal("12"));
+            nutriments.setFiber100g(new BigDecimal("3.5"));
+            nutriments.setSugars100g(new BigDecimal("8"));
 
             Product product = new Product();
             product.setProductName("Peanut Butter");
@@ -90,8 +90,8 @@ class NutritionLookupServiceTest {
 
             // Second product has nutriments with data
             Nutriments nutriments = new Nutriments();
-            nutriments.setEnergyKcal100g(100.0);
-            nutriments.setProteins100g(5.0);
+            nutriments.setEnergyKcal100g(new BigDecimal("100"));
+            nutriments.setProteins100g(new BigDecimal("5"));
 
             Product productWithData = new Product();
             productWithData.setProductName("Product 2");
@@ -175,7 +175,7 @@ class NutritionLookupServiceTest {
         @DisplayName("Should return true when calories present")
         void shouldReturnTrueWhenCaloriesPresent() {
             Nutriments nutriments = new Nutriments();
-            nutriments.setEnergyKcal100g(100.0);
+            nutriments.setEnergyKcal100g(new BigDecimal("100"));
 
             assertThat(nutriments.hasData()).isTrue();
         }
@@ -184,7 +184,7 @@ class NutritionLookupServiceTest {
         @DisplayName("Should return true when protein present")
         void shouldReturnTrueWhenProteinPresent() {
             Nutriments nutriments = new Nutriments();
-            nutriments.setProteins100g(10.0);
+            nutriments.setProteins100g(new BigDecimal("10"));
 
             assertThat(nutriments.hasData()).isTrue();
         }
@@ -193,7 +193,7 @@ class NutritionLookupServiceTest {
         @DisplayName("Should return true when fat present")
         void shouldReturnTrueWhenFatPresent() {
             Nutriments nutriments = new Nutriments();
-            nutriments.setFat100g(5.0);
+            nutriments.setFat100g(new BigDecimal("5"));
 
             assertThat(nutriments.hasData()).isTrue();
         }
@@ -202,8 +202,8 @@ class NutritionLookupServiceTest {
         @DisplayName("Should return false when no key nutrients present")
         void shouldReturnFalseWhenNoKeyNutrients() {
             Nutriments nutriments = new Nutriments();
-            nutriments.setCarbohydrates100g(20.0);
-            nutriments.setFiber100g(5.0);
+            nutriments.setCarbohydrates100g(new BigDecimal("20"));
+            nutriments.setFiber100g(new BigDecimal("5"));
 
             assertThat(nutriments.hasData()).isFalse();
         }
@@ -269,12 +269,12 @@ class NutritionLookupServiceTest {
         @DisplayName("Should fill missing nutrition fields from lookup")
         void shouldFillMissingFields() {
             Nutriments nutriments = new Nutriments();
-            nutriments.setEnergyKcal100g(200.0);
-            nutriments.setProteins100g(15.0);
-            nutriments.setCarbohydrates100g(25.0);
-            nutriments.setFat100g(8.0);
-            nutriments.setFiber100g(4.0);
-            nutriments.setSugars100g(6.0);
+            nutriments.setEnergyKcal100g(new BigDecimal("200"));
+            nutriments.setProteins100g(new BigDecimal("15"));
+            nutriments.setCarbohydrates100g(new BigDecimal("25"));
+            nutriments.setFat100g(new BigDecimal("8"));
+            nutriments.setFiber100g(new BigDecimal("4"));
+            nutriments.setSugars100g(new BigDecimal("6"));
 
             Product apiProduct = new Product();
             apiProduct.setProductName("Chicken Breast");
