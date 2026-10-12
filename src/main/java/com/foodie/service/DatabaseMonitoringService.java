@@ -47,14 +47,14 @@ public class DatabaseMonitoringService {
         Map<String, Object> stats = new LinkedHashMap<>();
 
         stats.put("timestamp", LocalDateTime.now().toString());
-        stats.put("totalUsers", countTable("app_user"));
-        stats.put("totalHouseholds", countTable("household"));
-        stats.put("totalMeals", countTable("meal"));
-        stats.put("totalProducts", countTable("product"));
-        stats.put("totalFoodLogs", countTable("food_log"));
-        stats.put("totalMealPlans", countTable("meal_plan"));
-        stats.put("totalShoppingItems", countTable("shopping_list_item"));
-        stats.put("totalWorkouts", countTable("workout"));
+        stats.put("totalUsers", countTable("app_users"));
+        stats.put("totalHouseholds", countTable("households"));
+        stats.put("totalMeals", countTable("meals"));
+        stats.put("totalProducts", countTable("products"));
+        stats.put("totalFoodLogs", countTable("food_logs"));
+        stats.put("totalMealPlans", countTable("meal_plans"));
+        stats.put("totalShoppingItems", countTable("shopping_list_items"));
+        stats.put("totalWorkouts", countTable("workouts"));
 
         // Per-user averages
         long users = (long) stats.get("totalUsers");
@@ -84,9 +84,9 @@ public class DatabaseMonitoringService {
     public Map<String, Object> getTopUsers() {
         Map<String, Object> result = new LinkedHashMap<>();
 
-        result.put("topByMeals", getTopUsersByTable("meal", 10));
-        result.put("topByProducts", getTopUsersByTable("product", 10));
-        result.put("topByFoodLogs", getTopUsersByTable("food_log", 10));
+        result.put("topByMeals", getTopUsersByTable("meals", 10));
+        result.put("topByProducts", getTopUsersByTable("products", 10));
+        result.put("topByFoodLogs", getTopUsersByTable("food_logs", 10));
 
         return result;
     }
@@ -107,18 +107,18 @@ public class DatabaseMonitoringService {
     private Map<String, String> checkThresholds() {
         Map<String, String> warnings = new LinkedHashMap<>();
 
-        long users = countTable("app_user");
+        long users = countTable("app_users");
         if (users > maxUsers) {
             warnings.put("users", "Total users (" + users + ") exceeds limit (" + maxUsers + ")");
         }
 
-        long foodLogs = countTable("food_log");
+        long foodLogs = countTable("food_logs");
         if (foodLogs > maxFoodLogs) {
             warnings.put("foodLogs", "Total food logs (" + foodLogs + ") exceeds limit (" + maxFoodLogs + ")");
         }
 
         // Check for users with excessive data
-        var topMealUsers = getTopUsersByTable("meal", 1);
+        var topMealUsers = getTopUsersByTable("meals", 1);
         if (!topMealUsers.isEmpty()) {
             var top = topMealUsers.values().iterator().next();
             if (top instanceof Number n && n.longValue() > maxMealsPerUser) {
@@ -126,7 +126,7 @@ public class DatabaseMonitoringService {
             }
         }
 
-        var topProductUsers = getTopUsersByTable("product", 1);
+        var topProductUsers = getTopUsersByTable("products", 1);
         if (!topProductUsers.isEmpty()) {
             var top = topProductUsers.values().iterator().next();
             if (top instanceof Number n && n.longValue() > maxProductsPerUser) {
@@ -155,7 +155,7 @@ public class DatabaseMonitoringService {
             String sql = """
                 SELECT h.name, COUNT(*) as cnt
                 FROM %s t
-                JOIN household h ON t.household_id = h.id
+                JOIN households h ON t.household_id = h.id
                 GROUP BY h.id, h.name
                 ORDER BY cnt DESC
                 LIMIT %d
