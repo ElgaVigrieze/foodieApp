@@ -48,3 +48,9 @@ app:
   open-food-facts:
     connect-timeout-ms: ${OFF_CONNECT_TIMEOUT:5000}
     read-timeout-ms: ${OFF_READ_TIMEOUT:10000}
+  monitoring:
+    admin-email: ${ADMIN_EMAIL:}
+    max-users: ${MAX_USERS:100}
+    max-meals-per-user: ${MAX_MEALS_PER_USER:500}
+    max-products-per-user: ${MAX_PRODUCTS_PER_USER:1000}
+    max-food-logs: ${MAX_FOOD_LOGS:50000}
