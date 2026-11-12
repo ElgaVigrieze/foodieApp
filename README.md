@@ -79,16 +79,16 @@ A comprehensive meal planning and nutrition tracking application with **AI-power
 
 ## 🛠️ Tech Stack
 
-| Category | Technologies |
-|----------|-------------|
-| **Backend** | Java 21, Spring Boot 3.3, Spring Data JPA, Spring Security |
-| **AI/ML** | Cloudflare Workers AI (Llama 3.2 Vision, Llama 3.3 70B) |
-| **External APIs** | Open Food Facts (nutrition data, barcode lookup) |
-| **Frontend** | Thymeleaf, Bootstrap |
-| **Database** | PostgreSQL (production), H2 (development) |
-| **Authentication** | OAuth2 (Google, GitHub) |
-| **Deployment** | Docker, Fly.io |
-| **Build** | Maven |
+| Category | Technologies                                               |
+|----------|------------------------------------------------------------|
+| **Backend** | Java 25, Spring Boot 3.3, Spring Data JPA, Spring Security |
+| **AI/ML** | Cloudflare Workers AI (Llama 3.2 Vision, Llama 3.3 70B)    |
+| **External APIs** | Open Food Facts (nutrition data, barcode lookup)           |
+| **Frontend** | Thymeleaf, Bootstrap                                       |
+| **Database** | PostgreSQL (production), H2 (development)                  |
+| **Authentication** | OAuth2 (Google, GitHub)                                    |
+| **Deployment** | Docker, Fly.io                                             |
+| **Build** | Maven                                                      |
 
 ---
 
@@ -96,7 +96,7 @@ A comprehensive meal planning and nutrition tracking application with **AI-power
 
 ### Prerequisites
 
-- Java 21+
+- Java 25+
 - Maven 3.8+
 - PostgreSQL (or use H2 for local dev)
 - Cloudflare account (for AI features)
