@@ -7,4 +7,6 @@ import java.util.Optional;
 
 public interface AppUserRepository extends JpaRepository<AppUser, Long> {
     Optional<AppUser> findByGoogleId(String googleId);
+
+    Optional<AppUser> findByBrainToken(String brainToken);
 }

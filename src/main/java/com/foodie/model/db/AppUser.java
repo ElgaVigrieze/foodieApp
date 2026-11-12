@@ -4,6 +4,7 @@ import com.foodie.model.HouseholdRole;
 import jakarta.persistence.*;
 import lombok.*;
 import java.math.BigDecimal;
+import java.time.Instant;
 
 @Entity
 @Table(name = "app_users")
@@ -41,4 +42,17 @@ public class AppUser {
     private BigDecimal targetFat;
     private BigDecimal targetProtein;
     private BigDecimal targetCost;
+
+    // ── Brain test recorder ──────────────────────────────────────────────────
+
+    /** Secret token used by the browser recorder to post results without a session. */
+    @Column(name = "brain_token", unique = true, length = 64)
+    private String brainToken;
+
+    @Column(name = "brain_token_created_at")
+    private Instant brainTokenCreatedAt;
+
+    /** Last time a result was received from the browser recorder. */
+    @Column(name = "brain_last_sync_at")
+    private Instant brainLastSyncAt;
 }

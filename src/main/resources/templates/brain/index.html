@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Brain - Foodie')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: navbar}"></nav>
+
+<div class="container">
+
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+        <div>
+            <h2 class="mb-0"><i class="bi bi-speedometer2"></i> Brain</h2>
+            <small class="text-muted">Daily cognitive check-ins, recorded automatically.</small>
+        </div>
+
+        <div class="d-flex align-items-center gap-2">
+            <div class="btn-group">
+                <a class="btn btn-outline-secondary" th:href="@{/brain(month=${prevMonthParam})}"
+                   title="Previous month">
+                    <i class="bi bi-chevron-left"></i>
+                </a>
+                <span class="btn btn-light disabled text-dark fw-semibold" th:text="${monthLabel}"></span>
+                <a class="btn btn-outline-secondary" th:href="@{/brain(month=${nextMonthParam})}"
+                   title="Next month">
+                    <i class="bi bi-chevron-right"></i>
+                </a>
+            </div>
+            <a class="btn btn-outline-success" th:href="@{/brain(month=${currentMonthParam})}">
+                This month
+            </a>
+        </div>
+    </div>
+
+    <div th:if="${success}" class="alert alert-success alert-dismissible fade show" role="alert">
+        <span th:text="${success}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    <div th:if="${error}" class="alert alert-danger alert-dismissible fade show" role="alert">
+        <span th:text="${error}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
+    <!-- Test triggers -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-body d-flex flex-column">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <span class="badge bg-success-subtle text-success-emphasis fs-6">
+                            <i class="bi bi-stopwatch"></i>
+                        </span>
+                        <h5 class="mb-0">Reaction Time</h5>
+                    </div>
+                    <p class="text-muted small flex-grow-1 mb-2">
+                        The test runs 5 rounds. Foodie records the official final average.
+                        It also saves the fastest round it can see.
+                    </p>
+                    <div class="small mb-3" th:if="${summary.latestReaction() != null}">
+                        <span class="text-muted">Last:</span>
+                        <strong th:text="|${summary.latestReaction().reactionMs} ms|"></strong>
+                        <span class="text-muted"
+                              th:text="| · ${#temporals.format(summary.latestReaction().testDate, 'd MMM yyyy')}|"></span>
+                        <span class="text-muted"
+                              th:if="${summary.latestReaction().bestReactionMs != null}"
+                              th:text="| · best seen ${summary.latestReaction().bestReactionMs} ms|"></span>
+                    </div>
+                    <div class="small text-muted mb-3" th:if="${summary.latestReaction() == null}">
+                        No reaction time recorded yet.
+                    </div>
+                    <a class="btn btn-success brain-test-link"
+                       href="https://humanbenchmark.com/tests/reactiontime"
+                       data-test-url="https://humanbenchmark.com/tests/reactiontime"
+                       target="_blank" rel="noopener">
+                        <i class="bi bi-box-arrow-up-right"></i> Open reaction test
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-body d-flex flex-column">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <span class="badge bg-primary-subtle text-primary-emphasis fs-6">
+                            <i class="bi bi-grid-3x3-gap"></i>
+                        </span>
+                        <h5 class="mb-0">Processing Speed</h5>
+                    </div>
+                    <p class="text-muted small flex-grow-1 mb-2">
+                        The default test runs 3 levels. Foodie records the final average
+                        response time and accuracy.
+                    </p>
+                    <div class="small mb-3" th:if="${summary.latestProcessing() != null}">
+                        <span class="text-muted">Last:</span>
+                        <strong th:text="|${summary.latestProcessing().processingAvgMs} ms|"></strong>
+                        <span class="text-muted"
+                              th:text="| · ${summary.latestProcessing().processingAccuracy}% accuracy|"></span>
+                        <span class="text-muted"
+                              th:text="| · ${#temporals.format(summary.latestProcessing().testDate, 'd MMM yyyy')}|"></span>
+                    </div>
+                    <div class="small text-muted mb-3" th:if="${summary.latestProcessing() == null}">
+                        No processing speed recorded yet.
+                    </div>
+                    <a class="btn btn-primary brain-test-link"
+                       href="https://humanbenchmark.now/tests/processing-speed"
+                       data-test-url="https://humanbenchmark.now/tests/processing-speed"
+                       target="_blank" rel="noopener">
+                        <i class="bi bi-box-arrow-up-right"></i> Open processing test
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Monthly summary -->
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-lg-3">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="text-muted small">Reaction average</div>
+                    <div class="fs-3 fw-bold text-success" th:if="${summary.avgReactionMs() != null}"
+                         th:text="|${#numbers.formatDecimal(summary.avgReactionMs(), 1, 0)} ms|">—</div>
+                    <div class="fs-3 fw-bold text-muted" th:if="${summary.avgReactionMs() == null}">—</div>
+                    <div class="small text-muted" th:if="${summary.bestReactionMs() != null}"
+                         th:text="|fastest recorded ${summary.bestReactionMs()} ms|"></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="text-muted small">Processing average</div>
+                    <div class="fs-3 fw-bold text-primary" th:if="${summary.avgProcessingMs() != null}"
+                         th:text="|${#numbers.formatDecimal(summary.avgProcessingMs(), 1, 0)} ms|">—</div>
+                    <div class="fs-3 fw-bold text-muted" th:if="${summary.avgProcessingMs() == null}">—</div>
+                    <div class="small text-muted" th:if="${summary.avgAccuracy() != null}"
+                         th:text="|${#numbers.formatDecimal(summary.avgAccuracy(), 1, 0)}% average accuracy|"></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="text-muted small">Active days</div>
+                    <div class="fs-3 fw-bold"
+                         th:text="|${summary.dayCount()} / ${daysInMonth}|">0 / 30</div>
+                    <div class="small text-muted">days with at least one test</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="text-muted small">Tests recorded</div>
+                    <div class="fs-3 fw-bold" th:text="${summary.testCount()}">0</div>
+                    <div class="small text-muted">in <span th:text="${monthLabel}"></span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recorder setup -->
+    <div class="card mb-4">
+        <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <strong><i class="bi bi-broadcast"></i> Automatic recorder</strong>
+            <span class="badge"
+                  th:classappend="${lastSyncLabel != null} ? 'bg-success' : 'bg-secondary'"
+                  th:text="${lastSyncLabel != null} ? 'Connected' : 'Not connected yet'">
+                Not connected yet
+            </span>
+        </div>
+        <div class="card-body">
+            <div class="row g-4">
+                <div class="col-lg-7">
+                    <p class="mb-2">
+                        Results save automatically when each test finishes. One-time setup:
+                    </p>
+                    <ol class="small mb-2">
+                        <li>
+                            Install <strong>Tampermonkey</strong> in your browser.
+                        </li>
+                        <li>
+                            <a th:href="@{/js/brain-recorder.user.js}">
+                                <i class="bi bi-download"></i> Install the Foodie recorder
+                            </a>
+                            (Tampermonkey will ask you to confirm).
+                        </li>
+                        <li>
+                            Use the <strong>Open test</strong> buttons above. They pair the recorder
+                            with your account automatically.
+                        </li>
+                    </ol>
+                    <p class="small text-muted mb-1">
+                        <i class="bi bi-phone"></i>
+                        Android: automatic recording works in <strong>Firefox for Android</strong> or
+                        <strong>Kiwi Browser</strong> with Tampermonkey. Regular Chrome for Android
+                        does not support extensions — use the manual entry below instead.
+                    </p>
+                    <p class="small text-muted mb-0">
+                        If the install link opens as plain text, use
+                        <strong>Tampermonkey → Utilities → Install from URL</strong> with the same link.
+                    </p>
+                </div>
+                <div class="col-lg-5">
+                    <label class="form-label small mb-1">Recorder token</label>
+                    <div class="input-group input-group-sm mb-2">
+                        <input type="password" class="form-control font-monospace" id="brain-token"
+                               th:value="${token}" readonly autocomplete="off">
+                        <button class="btn btn-outline-secondary" type="button" onclick="toggleToken()"
+                                title="Show / hide token">
+                            <i class="bi bi-eye" id="token-eye"></i>
+                        </button>
+                        <button class="btn btn-outline-secondary" type="button" onclick="copyToken()"
+                                title="Copy token">
+                            <i class="bi bi-clipboard"></i>
+                        </button>
+                    </div>
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <button class="btn btn-sm btn-outline-secondary" type="button" onclick="testConnection()">
+                            <i class="bi bi-plug"></i> Test connection
+                        </button>
+                        <span class="small text-muted" id="copy-status"></span>
+                    </div>
+                    <div class="small" id="connection-result"></div>
+
+                    <form class="mt-2"
+                          th:action="@{/brain/token/regenerate}" method="post"
+                          onsubmit="return confirm('Regenerate the recorder token? The old token stops working until you reconnect from this page.');">
+                        <button class="btn btn-sm btn-outline-danger" type="submit">
+                            <i class="bi bi-arrow-repeat"></i> Regenerate token
+                        </button>
+                    </form>
+
+                    <div class="small text-muted mt-2" th:if="${lastSyncLabel != null}">
+                        Last auto-sync:
+                        <span th:attr="data-instant=${lastSyncInstant}" th:text="${lastSyncLabel}"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Monthly results -->
+    <div class="card mb-4">
+        <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <strong><i class="bi bi-calendar3"></i> <span th:text="${monthLabel}"></span></strong>
+            <span class="small text-muted"
+                  th:text="|${summary.testCount()} tests · ${summary.dayCount()} active days|"></span>
+        </div>
+
+        <div class="table-responsive" th:if="${!summary.results().isEmpty()}">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                <tr>
+                    <th>Date</th>
+                    <th>Test</th>
+                    <th class="text-end">Score</th>
+                    <th>Detail</th>
+                    <th>Recorded</th>
+                    <th class="text-end"></th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="result : ${summary.results()}">
+                    <td class="text-nowrap"
+                        th:text="${#temporals.format(result.testDate, 'EEE d MMM')}"></td>
+                    <td>
+                        <span class="badge"
+                              th:classappend="${result.reactionTime} ? 'bg-success-subtle text-success-emphasis' : 'bg-primary-subtle text-primary-emphasis'">
+                            <i th:class="'bi ' + ${result.testType.icon}"></i>
+                            <span th:text="${result.testType.label}"></span>
+                        </span>
+                    </td>
+                    <td class="text-end fw-semibold text-nowrap">
+                        <span th:if="${result.reactionTime}" th:text="|${result.reactionMs} ms|"></span>
+                        <span th:if="${result.processingSpeed}" th:text="|${result.processingAvgMs} ms|"></span>
+                    </td>
+                    <td class="small text-muted">
+                        <span th:if="${result.reactionTime}">
+                            <span th:if="${result.bestReactionMs != null}"
+                                  th:text="|best seen ${result.bestReactionMs} ms|"
+                                  title="Fastest individual round the recorder captured"></span>
+                            <span th:if="${result.bestReactionMs != null && result.attemptsCount != null}"> · </span>
+                            <span th:if="${result.attemptsCount != null}"
+                                  th:text="|${result.attemptsCount} rounds seen|"></span>
+                            <span th:if="${result.attemptsCount == null}">official average</span>
+                        </span>
+                        <span th:if="${result.processingSpeed}">
+                            <span th:text="|${result.processingAccuracy}% accuracy|"></span>
+                            <span th:if="${result.levels != null}"
+                                  th:text="| · ${result.levels} levels|"></span>
+                        </span>
+                    </td>
+                    <td class="small text-muted text-nowrap">
+                        <span th:attr="data-instant=${result.recordedAt}"
+                              th:text="${#temporals.format(result.testDate, 'd MMM')}"></span>
+                    </td>
+                    <td class="text-end">
+                        <form th:action="@{/brain/results/{id}/delete(id=${result.id})}" method="post"
+                              class="d-inline"
+                              onsubmit="return confirm('Delete this result?');">
+                            <input type="hidden" name="month" th:value="${monthParam}">
+                            <button class="btn btn-sm btn-outline-danger" type="submit" title="Delete result">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="card-body text-center text-muted py-5" th:if="${summary.results().isEmpty()}">
+            <div class="fs-1 mb-2"><i class="bi bi-clipboard-data"></i></div>
+            <p class="mb-1">No results recorded for <span th:text="${monthLabel}"></span>.</p>
+            <p class="small mb-0">Open a test above, or add a result manually below.</p>
+        </div>
+    </div>
+
+    <!-- Mobile / manual fallback -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <strong><i class="bi bi-pencil-square"></i> Add a result manually</strong>
+            <span class="text-muted small ms-2">fallback for phones without userscripts</span>
+        </div>
+        <div class="card-body">
+            <form th:action="@{/brain/manual}" method="post" class="row g-2 align-items-end">
+                <div class="col-6 col-md-2">
+                    <label class="form-label small">Date</label>
+                    <input type="date" name="date" class="form-control form-control-sm"
+                           th:value="${today}" required>
+                </div>
+                <div class="col-6 col-md-3">
+                    <label class="form-label small">Test</label>
+                    <select name="testType" id="manual-test-type" class="form-select form-select-sm"
+                            onchange="toggleManualFields()">
+                        <option th:each="type : ${testTypes}"
+                                th:value="${type}"
+                                th:text="${type.label}"></option>
+                    </select>
+                </div>
+                <div class="col-6 col-md-2 manual-reaction">
+                    <label class="form-label small">Reaction (ms)</label>
+                    <input type="number" name="reactionMs" min="1" max="60000"
+                           class="form-control form-control-sm" placeholder="e.g. 245">
+                </div>
+                <div class="col-6 col-md-2 manual-processing d-none">
+                    <label class="form-label small">Avg response (ms)</label>
+                    <input type="number" name="processingAvgMs" min="1" max="60000"
+                           class="form-control form-control-sm" placeholder="e.g. 430">
+                </div>
+                <div class="col-6 col-md-2 manual-processing d-none">
+                    <label class="form-label small">Accuracy (%)</label>
+                    <input type="number" name="processingAccuracy" min="0" max="100"
+                           class="form-control form-control-sm" placeholder="e.g. 96">
+                </div>
+                <div class="col-6 col-md-2">
+                    <button class="btn btn-outline-success btn-sm w-100" type="submit">
+                        <i class="bi bi-plus-lg"></i> Save
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    (function () {
+        var tokenInput = document.getElementById('brain-token');
+        var token = tokenInput ? tokenInput.value : '';
+        var apiBase = window.location.origin;
+
+        // Pair the userscript automatically when a test is opened from Foodie.
+        document.querySelectorAll('.brain-test-link').forEach(function (link) {
+            var testUrl = link.dataset.testUrl;
+            if (!testUrl || !token) return;
+            var config = { a: apiBase, t: token };
+            link.href = testUrl + '#foodie=' + encodeURIComponent(JSON.stringify(config));
+        });
+
+        // Show recorded times in the browser's local timezone.
+        document.querySelectorAll('[data-instant]').forEach(function (element) {
+            var date = new Date(element.dataset.instant);
+            if (!isNaN(date.getTime())) {
+                element.textContent = date.toLocaleString(undefined, {
+                    dateStyle: 'medium',
+                    timeStyle: 'short'
+                });
+            }
+        });
+
+        toggleManualFields();
+    })();
+
+    function toggleToken() {
+        var input = document.getElementById('brain-token');
+        var eye = document.getElementById('token-eye');
+        if (!input) return;
+        var show = input.type === 'password';
+        input.type = show ? 'text' : 'password';
+        if (eye) eye.className = show ? 'bi bi-eye-slash' : 'bi bi-eye';
+    }
+
+    function copyToken() {
+        var input = document.getElementById('brain-token');
+        var status = document.getElementById('copy-status');
+        if (!input) return;
+
+        function done(ok) {
+            if (!status) return;
+            status.textContent = ok ? 'Copied' : 'Copy failed';
+            setTimeout(function () { status.textContent = ''; }, 2000);
+        }
+
+        function fallback() {
+            input.type = 'text';
+            input.select();
+            try {
+                done(document.execCommand('copy'));
+            } catch (e) {
+                done(false);
+            }
+            input.type = 'password';
+        }
+
+        if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(input.value).then(function () {
+                done(true);
+            }).catch(fallback);
+        } else {
+            fallback();
+        }
+    }
+
+    async function testConnection() {
+        var box = document.getElementById('connection-result');
+        var input = document.getElementById('brain-token');
+        if (!box || !input) return;
+
+        box.className = 'small text-muted';
+        box.textContent = 'Checking…';
+
+        try {
+            var response = await fetch('/api/brain/ping', {
+                headers: { 'X-Brain-Token': input.value }
+            });
+            if (!response.ok) {
+                throw new Error(response.status === 401
+                    ? 'Token was not recognised. Regenerate it and reconnect.'
+                    : 'Server error ' + response.status);
+            }
+            var data = await response.json();
+            box.className = 'small text-success';
+            box.textContent = 'Connected as ' + data.user + '.';
+        } catch (error) {
+            box.className = 'small text-danger';
+            box.textContent = error.message;
+        }
+    }
+
+    function toggleManualFields() {
+        var select = document.getElementById('manual-test-type');
+        if (!select) return;
+
+        var reaction = select.value === 'REACTION_TIME';
+        document.querySelectorAll('.manual-reaction').forEach(function (element) {
+            element.classList.toggle('d-none', !reaction);
+        });
+        document.querySelectorAll('.manual-processing').forEach(function (element) {
+            element.classList.toggle('d-none', reaction);
+        });
+
+        var reactionInput = document.querySelector('input[name="reactionMs"]');
+        var avgInput = document.querySelector('input[name="processingAvgMs"]');
+        var accuracyInput = document.querySelector('input[name="processingAccuracy"]');
+        if (reactionInput) reactionInput.required = reaction;
+        if (avgInput) avgInput.required = !reaction;
+        if (accuracyInput) accuracyInput.required = !reaction;
+    }
+</script>
+</body>
+</html>

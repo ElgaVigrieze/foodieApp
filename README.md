@@ -31,6 +31,7 @@ A comprehensive meal planning and nutrition tracking application with **AI-power
 - **Household Support** — Multi-user households with shared data and role-based access
 - **Budget Tracking** — Track food spending alongside nutrition
 - **Fitness Integration** — Log workouts and track training plans
+- **Brain Tracking** — Automatic reaction-time and processing-speed scores with a monthly scoreboard
 
 ---
 
@@ -155,6 +156,16 @@ docker run -p 8080:8080 \
   -e CLOUDFLARE_API_TOKEN=your_token \
   foodie
 ```
+
+### Brain Test Recorder
+
+The **Brain** tab records Human Benchmark scores automatically with a small Tampermonkey userscript:
+
+1. Open **Brain** in Foodie and install the recorder from the *Automatic recorder* card.
+2. Use the **Open test** buttons on that page — they pair the script with your account.
+3. Finish the test; the result is posted automatically.
+
+This works on desktop and on Android with **Firefox for Android** or **Kiwi Browser** (both support Tampermonkey). Chrome for Android does not support extensions, so use the manual-entry form there instead. The ingest endpoint is authenticated with a per-user token, which can be regenerated from the Brain page.
 
 ---
 
