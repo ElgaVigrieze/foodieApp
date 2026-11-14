@@ -1,9 +1,9 @@
 # 🍽️ FoodieApp
 
-A comprehensive meal planning and nutrition tracking application with **AI-powered features** for effortless food logging. Built with Java 21 and Spring Boot 3.3.
+A comprehensive meal planning and nutrition tracking application with **AI-powered features** for effortless food logging. Built with Java 25 and Spring Boot 3.5.
 
-[![Java](https://img.shields.io/badge/Java-21-orange)](https://openjdk.org/)
-[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.3-brightgreen)](https://spring.io/projects/spring-boot)
+[![Java](https://img.shields.io/badge/Java-25-orange)](https://openjdk.org/)
+[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5-brightgreen)](https://spring.io/projects/spring-boot)
 [![CI](https://github.com/ElgaVigrieze/foodieApp/actions/workflows/ci.yml/badge.svg)](https://github.com/ElgaVigrieze/foodieApp/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/License-MIT-blue)](LICENSE)
 
@@ -81,12 +81,12 @@ A comprehensive meal planning and nutrition tracking application with **AI-power
 
 | Category | Technologies                                               |
 |----------|------------------------------------------------------------|
-| **Backend** | Java 25, Spring Boot 3.3, Spring Data JPA, Spring Security |
+| **Backend** | Java 25, Spring Boot 3.5, Spring Data JPA, Spring Security |
 | **AI/ML** | Cloudflare Workers AI (Llama 3.2 Vision, Llama 3.3 70B)    |
 | **External APIs** | Open Food Facts (nutrition data, barcode lookup)           |
 | **Frontend** | Thymeleaf, Bootstrap                                       |
 | **Database** | PostgreSQL (production), H2 (development)                  |
-| **Authentication** | OAuth2 (Google, GitHub)                                    |
+| **Authentication** | OAuth2 (Google)                                    |
 | **Deployment** | Docker, Fly.io                                             |
 | **Build** | Maven                                                      |
 
@@ -113,7 +113,7 @@ spring:
     username: your_username
     password: your_password
 
-# OAuth2 (optional)
+# OAuth2 (required: the app will not start without these)
 spring:
   security:
     oauth2:
@@ -138,20 +138,26 @@ git clone https://github.com/ElgaVigrieze/foodieApp.git
 cd foodieApp
 
 # Run with Maven
-./mvnw spring-boot:run
+mvn spring-boot:run
 
 # Or build and run the JAR
-./mvnw package
+mvn package
 java -jar target/foodie-0.0.1-SNAPSHOT.jar
 ```
 
-Visit `http://localhost:8080`
+Visit `http://localhost:9090` (override the port with the `PORT` environment variable).
+
+`GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` must be set before starting - see `.env.example` for all supported variables.
 
 ### Run with Docker
 
 ```bash
+# The Dockerfile copies the pre-built JAR, so build it first
+mvn package -DskipTests
 docker build -t foodie .
-docker run -p 8080:8080 \
+docker run -p 9090:9090 \
+  -e GOOGLE_CLIENT_ID=your_client_id \
+  -e GOOGLE_CLIENT_SECRET=your_client_secret \
   -e CLOUDFLARE_ACCOUNT_ID=your_id \
   -e CLOUDFLARE_API_TOKEN=your_token \
   foodie
@@ -161,11 +167,12 @@ docker run -p 8080:8080 \
 
 The **Brain** tab records Human Benchmark scores automatically with a small Tampermonkey userscript:
 
-1. Open **Brain** in Foodie and install the recorder from the *Automatic recorder* card.
-2. Use the **Open test** buttons on that page — they pair the script with your account.
-3. Finish the test; the result is posted automatically.
+1. Open **Brain** in Foodie and install the recorder from the *Automatic recorder* card. Refresh the page afterwards.
+2. A small **🍽️ Foodie: connected** badge appears on the Brain page once the script is running in that browser. The script reads the token from the page and pairs itself automatically.
+3. Use the **Open test** buttons, finish the test, and the result is posted automatically. The badge on the test page shows *saving* and then *saved*.
+4. If the badge says **not paired**, reopen the test from Foodie. If no badge appears at all, the userscript is not installed or enabled for that site.
 
-This works on desktop and on Android with **Firefox for Android** or **Kiwi Browser** (both support Tampermonkey). Chrome for Android does not support extensions, so use the manual-entry form there instead. The ingest endpoint is authenticated with a per-user token, which can be regenerated from the Brain page.
+This works on desktop and on Android with **Firefox for Android** or **Kiwi Browser** (both support Tampermonkey). Chrome for Android does not support extensions, so use the manual-entry form there instead. The ingest endpoint is authenticated with a per-user token, which can be regenerated from the Brain page. The Brain page distinguishes a valid token from a live recorder: **Test token** checks the token only, while *Recorder last seen* is updated when the userscript actually reaches the app. The recorder sends a heartbeat when a test page or the Brain page loads, which makes installation problems visible before the first result.
 
 ---
 
@@ -184,10 +191,10 @@ This works on desktop and on Android with **Firefox for Android** or **Kiwi Brow
 
 ## 📖 API Documentation
 
-Once the app is running, access the interactive API documentation at:
+Once the app is running, access the interactive API documentation (you need to be logged in) at:
 
-- **Swagger UI**: [http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html)
-- **OpenAPI JSON**: [http://localhost:8080/v3/api-docs](http://localhost:8080/v3/api-docs)
+- **Swagger UI**: [http://localhost:9090/swagger-ui.html](http://localhost:9090/swagger-ui.html)
+- **OpenAPI JSON**: [http://localhost:9090/v3/api-docs](http://localhost:9090/v3/api-docs)
 
 ---
 

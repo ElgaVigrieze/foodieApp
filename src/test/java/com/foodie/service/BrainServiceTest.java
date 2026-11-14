@@ -230,6 +230,9 @@ class BrainServiceTest {
     @Test
     void regenerateToken_replacesTokenAndResetsConnectionStatus() {
         user.setBrainLastSyncAt(Instant.parse("2026-11-07T08:00:00Z"));
+        user.setBrainLastSeenAt(Instant.parse("2026-11-07T08:00:00Z"));
+        user.setBrainLastSeenPage("reaction");
+        user.setBrainLastSeenAgent("Mozilla/5.0");
         when(currentUserService.getCurrentUser()).thenReturn(user);
         when(appUserRepository.save(user)).thenReturn(user);
 
@@ -239,7 +242,45 @@ class BrainServiceTest {
         assertThat(user.getBrainToken()).isEqualTo(token);
         assertThat(user.getBrainTokenCreatedAt()).isNotNull();
         assertThat(user.getBrainLastSyncAt()).isNull();
+        assertThat(user.getBrainLastSeenAt()).isNull();
+        assertThat(user.getBrainLastSeenPage()).isNull();
+        assertThat(user.getBrainLastSeenAgent()).isNull();
         verify(appUserRepository).save(user);
+    }
+
+    @Test
+    void touchRecorder_marksRecorderAsSeen() {
+        when(appUserRepository.findByBrainToken("token-1")).thenReturn(Optional.of(user));
+        when(appUserRepository.save(user)).thenReturn(user);
+
+        AppUser saved = brainService.touchRecorder(
+                "token-1", "reaction", "Mozilla/5.0 (Android 14; Mobile; rv:130.0) Gecko/130.0 Firefox/130.0");
+
+        assertThat(saved).isSameAs(user);
+        assertThat(user.getBrainLastSeenAt()).isNotNull();
+        assertThat(user.getBrainLastSeenPage()).isEqualTo("reaction");
+        assertThat(user.getBrainLastSeenAgent()).contains("Firefox/130.0");
+        verify(appUserRepository).save(user);
+    }
+
+    @Test
+    void touchRecorder_ignoresUnknownPageName() {
+        when(appUserRepository.findByBrainToken("token-1")).thenReturn(Optional.of(user));
+        when(appUserRepository.save(user)).thenReturn(user);
+
+        brainService.touchRecorder("token-1", "something-else", "TestAgent");
+
+        assertThat(user.getBrainLastSeenAt()).isNotNull();
+        assertThat(user.getBrainLastSeenPage()).isNull();
+        assertThat(user.getBrainLastSeenAgent()).isEqualTo("TestAgent");
+    }
+
+    @Test
+    void touchRecorder_rejectsUnknownToken() {
+        when(appUserRepository.findByBrainToken("bad")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> brainService.touchRecorder("bad", "reaction", "TestAgent"))
+                .isInstanceOf(InvalidBrainTokenException.class);
     }
 
     @Test

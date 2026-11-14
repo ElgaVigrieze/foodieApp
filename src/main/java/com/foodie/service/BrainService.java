@@ -51,8 +51,11 @@ public class BrainService {
         AppUser user = requireUser();
         user.setBrainToken(newToken());
         user.setBrainTokenCreatedAt(Instant.now());
-        // The old token is now invalid, so the "Connected" badge must reset too.
+        // The old token is now invalid, so the recorder status must reset too.
         user.setBrainLastSyncAt(null);
+        user.setBrainLastSeenAt(null);
+        user.setBrainLastSeenPage(null);
+        user.setBrainLastSeenAgent(null);
         appUserRepository.save(user);
         return user.getBrainToken();
     }
@@ -60,6 +63,37 @@ public class BrainService {
     public Instant getLastSyncAt() {
         AppUser user = requireUser();
         return user.getBrainLastSyncAt();
+    }
+
+    public Instant getLastSeenAt() {
+        AppUser user = requireUser();
+        return user.getBrainLastSeenAt();
+    }
+
+    public String getLastSeenPage() {
+        AppUser user = requireUser();
+        return user.getBrainLastSeenPage();
+    }
+
+    public String getLastSeenAgent() {
+        AppUser user = requireUser();
+        return user.getBrainLastSeenAgent();
+    }
+
+    /**
+     * Called by the userscript when it loads a test page. It lets the Brain page
+     * show "recorder detected" even before the first result is submitted, which
+     * makes installation/pairing problems obvious.
+     */
+    @Transactional
+    public AppUser touchRecorder(String token, String page, String userAgent) {
+        AppUser user = authenticate(token);
+        user.setBrainLastSeenAt(Instant.now());
+        user.setBrainLastSeenPage(normalizePage(page));
+        user.setBrainLastSeenAgent(truncate(userAgent, 255));
+        log.info("Brain recorder heartbeat for user {} from page {} ({})",
+                user.getId(), page, user.getBrainLastSeenAgent());
+        return appUserRepository.save(user);
     }
 
     @Transactional(readOnly = true)
@@ -312,6 +346,22 @@ public class BrainService {
 
     private static String blankToNull(String value) {
         return value == null || value.isBlank() ? null : value.trim();
+    }
+
+    private static String normalizePage(String page) {
+        if (page == null) {
+            return null;
+        }
+        String value = page.trim().toLowerCase(Locale.ROOT);
+        return "reaction".equals(value) || "processing".equals(value) ? value : null;
+    }
+
+    private static String truncate(String value, int maxLength) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.length() <= maxLength ? trimmed : trimmed.substring(0, maxLength);
     }
 
     private static String newToken() {

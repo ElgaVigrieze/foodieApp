@@ -163,9 +163,9 @@
         <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
             <strong><i class="bi bi-broadcast"></i> Automatic recorder</strong>
             <span class="badge"
-                  th:classappend="${lastSyncLabel != null} ? 'bg-success' : 'bg-secondary'"
-                  th:text="${lastSyncLabel != null} ? 'Connected' : 'Not connected yet'">
-                Not connected yet
+                  th:classappend="${lastSyncLabel != null} ? 'bg-success' : (${lastSeenLabel != null} ? 'bg-info text-dark' : 'bg-secondary')"
+                  th:text="${lastSyncLabel != null} ? 'Results received' : (${lastSeenLabel != null} ? 'Recorder detected' : 'Recorder not detected')">
+                Recorder not detected
             </span>
         </div>
         <div class="card-body">
@@ -176,17 +176,24 @@
                     </p>
                     <ol class="small mb-2">
                         <li>
-                            Install <strong>Tampermonkey</strong> in your browser.
+                            Install <strong>Tampermonkey</strong> in the same browser where you use
+                            Foodie.
                         </li>
                         <li>
                             <a th:href="@{/js/brain-recorder.user.js}">
                                 <i class="bi bi-download"></i> Install the Foodie recorder
                             </a>
-                            (Tampermonkey will ask you to confirm).
+                            (Tampermonkey will ask you to confirm), then <strong>refresh this page</strong>.
                         </li>
                         <li>
-                            Use the <strong>Open test</strong> buttons above. They pair the recorder
-                            with your account automatically.
+                            After the refresh, the small
+                            <span class="badge bg-success">🍽️ Foodie: connected</span> badge should
+                            appear in the corner of this page. It means the recorder is installed and
+                            paired in this browser.
+                        </li>
+                        <li>
+                            Use the <strong>Open test</strong> buttons above. The badge should also
+                            appear on the test page; finish the test and the result saves itself.
                         </li>
                     </ol>
                     <p class="small text-muted mb-1">
@@ -198,6 +205,9 @@
                     <p class="small text-muted mb-0">
                         If the install link opens as plain text, use
                         <strong>Tampermonkey → Utilities → Install from URL</strong> with the same link.
+                        If the badge says <strong>not paired</strong>, reopen the test from this page.
+                        If Tampermonkey asks for permission to access <strong>foodie-app.fly.dev</strong>,
+                        choose <strong>Always allow</strong>; otherwise the result cannot be sent.
                     </p>
                 </div>
                 <div class="col-lg-5">
@@ -216,11 +226,17 @@
                     </div>
                     <div class="d-flex align-items-center gap-2 mb-2">
                         <button class="btn btn-sm btn-outline-secondary" type="button" onclick="testConnection()">
-                            <i class="bi bi-plug"></i> Test connection
+                            <i class="bi bi-plug"></i> Test token
                         </button>
                         <span class="small text-muted" id="copy-status"></span>
                     </div>
                     <div class="small" id="connection-result"></div>
+                    <div class="small text-muted mt-2">
+                        <i class="bi bi-info-circle"></i>
+                        A valid token does not prove the userscript is running. Open a test from this
+                        page; if the Foodie badge does not appear, the recorder is not installed or is
+                        disabled for that site.
+                    </div>
 
                     <form class="mt-2"
                           th:action="@{/brain/token/regenerate}" method="post"
@@ -230,10 +246,19 @@
                         </button>
                     </form>
 
-                    <div class="small text-muted mt-2" th:if="${lastSyncLabel != null}">
-                        Last auto-sync:
+                    <div class="small text-success mt-2" th:if="${lastSyncLabel != null}">
+                        <i class="bi bi-check-circle"></i> Last result received:
                         <span th:attr="data-instant=${lastSyncInstant}" th:text="${lastSyncLabel}"></span>
                     </div>
+                    <div class="small text-muted mt-1" th:if="${lastSeenLabel != null}">
+                        <i class="bi bi-broadcast"></i> Recorder last seen:
+                        <span th:attr="data-instant=${lastSeenInstant}" th:text="${lastSeenLabel}"></span>
+                        <span th:if="${lastSeenPage != null}" th:text="| (${lastSeenPage} test)|"></span>
+                        <span th:if="${lastSeenDevice != null}" th:text="| · ${lastSeenDevice}|"></span>
+                    </div>
+                    <a class="small" th:href="@{/brain(month=${monthParam})}">
+                        <i class="bi bi-arrow-clockwise"></i> Refresh status
+                    </a>
                 </div>
             </div>
         </div>
@@ -452,7 +477,8 @@
             }
             var data = await response.json();
             box.className = 'small text-success';
-            box.textContent = 'Connected as ' + data.user + '.';
+            box.textContent = 'Token is valid for ' + data.user
+                + '. Now open a test from this page; the Foodie badge should appear on the test page.';
         } catch (error) {
             box.className = 'small text-danger';
             box.textContent = error.message;

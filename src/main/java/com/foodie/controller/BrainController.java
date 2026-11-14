@@ -38,6 +38,9 @@ public class BrainController {
         BrainMonthSummary summary = brainService.getMonth(selected);
         String token = brainService.getOrCreateToken();
         Instant lastSync = brainService.getLastSyncAt();
+        Instant lastSeen = brainService.getLastSeenAt();
+        String lastSeenPage = brainService.getLastSeenPage();
+        String lastSeenAgent = brainService.getLastSeenAgent();
 
         model.addAttribute("summary", summary);
         model.addAttribute("token", token);
@@ -52,6 +55,11 @@ public class BrainController {
         model.addAttribute("lastSyncInstant", lastSync);
         model.addAttribute("lastSyncLabel", lastSync == null ? null
                 : SYNC_LABEL.format(lastSync.atZone(ZoneId.systemDefault())));
+        model.addAttribute("lastSeenInstant", lastSeen);
+        model.addAttribute("lastSeenLabel", lastSeen == null ? null
+                : SYNC_LABEL.format(lastSeen.atZone(ZoneId.systemDefault())));
+        model.addAttribute("lastSeenPage", lastSeenPage);
+        model.addAttribute("lastSeenDevice", deviceLabel(lastSeenAgent));
         return "brain/index";
     }
 
@@ -92,6 +100,44 @@ public class BrainController {
         ra.addFlashAttribute("success",
                 "New recorder token created. Open a test from this page again to reconnect your browser.");
         return "redirect:/brain";
+    }
+
+    private static String deviceLabel(String userAgent) {
+        if (userAgent == null || userAgent.isBlank()) {
+            return null;
+        }
+
+        String browser;
+        if (userAgent.contains("Firefox/")) {
+            browser = "Firefox";
+        } else if (userAgent.contains("Edg/")) {
+            browser = "Edge";
+        } else if (userAgent.contains("OPR/") || userAgent.contains("Opera")) {
+            browser = "Opera";
+        } else if (userAgent.contains("Chrome/")) {
+            browser = "Chrome";
+        } else if (userAgent.contains("Safari/")) {
+            browser = "Safari";
+        } else {
+            browser = "Browser";
+        }
+
+        String os;
+        if (userAgent.contains("Android")) {
+            os = "Android";
+        } else if (userAgent.contains("iPhone") || userAgent.contains("iPad")) {
+            os = "iOS";
+        } else if (userAgent.contains("Windows")) {
+            os = "Windows";
+        } else if (userAgent.contains("Mac OS X")) {
+            os = "macOS";
+        } else if (userAgent.contains("Linux")) {
+            os = "Linux";
+        } else {
+            os = null;
+        }
+
+        return os == null ? browser : browser + " on " + os;
     }
 
     private static YearMonth parseMonth(String month) {

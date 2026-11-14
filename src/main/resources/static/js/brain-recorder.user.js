@@ -1,13 +1,18 @@
 // ==UserScript==
 // @name         Foodie Brain Recorder
 // @namespace    https://github.com/ElgaVigrieze/foodieApp
-// @version      1.0.0
+// @version      1.1.1
 // @description  Automatically records Human Benchmark reaction time and processing speed results in Foodie.
 // @author       Foodie
+// @updateURL    https://foodie-app.fly.dev/js/brain-recorder.user.js
+// @downloadURL  https://foodie-app.fly.dev/js/brain-recorder.user.js
 // @match        https://humanbenchmark.com/tests/reactiontime*
 // @match        https://www.humanbenchmark.com/tests/reactiontime*
 // @match        https://humanbenchmark.now/tests/processing-speed*
 // @match        https://www.humanbenchmark.now/tests/processing-speed*
+// @match        https://foodie-app.fly.dev/brain*
+// @match        http://localhost/brain*
+// @match        http://127.0.0.1/brain*
 // @grant        GM_getValue
 // @grant        GM_setValue
 // @grant        GM_registerMenuCommand
@@ -32,9 +37,15 @@
         /(^|\.)humanbenchmark\.now$/i.test(location.hostname) &&
         location.pathname.startsWith('/tests/processing-speed');
 
-    if (!isReactionPage && !isProcessingPage) {
+    const isFoodieBrainPage =
+        location.pathname === '/brain' &&
+        document.getElementById('brain-token') !== null;
+
+    if (!isReactionPage && !isProcessingPage && !isFoodieBrainPage) {
         return;
     }
+
+    const pageName = isReactionPage ? 'reaction' : (isProcessingPage ? 'processing' : 'brain');
 
     // ── Config storage ───────────────────────────────────────────────────────
 
@@ -113,8 +124,98 @@
         toast('Recorder settings saved.', 'ok');
     }
 
+    function showStatus() {
+        const config = getConfig();
+        alert(
+            'Foodie Brain recorder\n\n' +
+            'Page: ' + pageName + '\n' +
+            'Paired: ' + (config ? 'yes' : 'no') + '\n' +
+            'Foodie URL: ' + (config ? config.api : '(not set)') + '\n' +
+            'Token: ' + (config ? config.token.slice(0, 8) + '…' : '(not set)')
+        );
+    }
+
     if (typeof GM_registerMenuCommand === 'function') {
         GM_registerMenuCommand('Foodie Brain: connect / change settings', configureManually);
+        GM_registerMenuCommand('Foodie Brain: show recorder status', showStatus);
+    }
+
+    // ── Persistent status badge ───────────────────────────────────────────────
+
+    let badge = null;
+    let badgeResetTimer = null;
+
+    function setBadge(state, detail) {
+        try {
+            if (!badge) {
+                badge = document.createElement('div');
+                badge.id = 'foodie-brain-status';
+                badge.style.cssText =
+                    'position:fixed;left:12px;bottom:12px;z-index:2147483646;' +
+                    'background:#166534;color:#fff;padding:6px 10px;border-radius:999px;' +
+                    'font:600 11px/1.2 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;' +
+                    'box-shadow:0 4px 14px rgba(0,0,0,.3);pointer-events:none;opacity:.95;' +
+                    'max-width:70vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;';
+                (document.body || document.documentElement).appendChild(badge);
+            }
+
+            const styles = {
+                connected: { color: '#166534', text: '🍽️ Foodie: connected' },
+                unpaired: { color: '#b45309', text: '🍽️ Foodie: not paired' },
+                saving: { color: '#1d4ed8', text: '🍽️ Foodie: saving…' },
+                saved: { color: '#166534', text: '🍽️ Foodie: saved' },
+                error: { color: '#b91c1c', text: '🍽️ Foodie: error' }
+            };
+            const style = styles[state] || styles.connected;
+
+            if (badgeResetTimer) {
+                clearTimeout(badgeResetTimer);
+                badgeResetTimer = null;
+            }
+
+            badge.textContent = style.text;
+            badge.style.background = style.color;
+            badge.title = detail || '';
+        } catch (ignored) {
+            // The badge must never break the test page.
+        }
+    }
+
+    function setBadgeThenConnected(detail, delay) {
+        setBadge('saved', detail);
+        badgeResetTimer = setTimeout(() => {
+            setBadge('connected', detail);
+        }, delay || 7000);
+    }
+
+    // ── Heartbeat ─────────────────────────────────────────────────────────────
+
+    async function heartbeat() {
+        const config = getConfig();
+        if (!config) return;
+
+        try {
+            const data = await postResult(
+                config.api + '/api/brain/heartbeat?page=' + encodeURIComponent(pageName),
+                config.token,
+                {}
+            );
+            const user = data.user || 'Foodie user';
+            console.info('[Foodie] recorder heartbeat accepted for', user, 'on', pageName);
+            setBadge('connected', 'Paired with ' + config.api + ' as ' + user + '.');
+        } catch (error) {
+            console.warn('[Foodie] recorder heartbeat failed', error);
+            if (error.status === 401) {
+                setBadge('unpaired', 'Token not recognised. Open the test from Foodie → Brain.');
+                toast(
+                    'Foodie token is no longer valid. Open this test from Foodie → Brain to reconnect.',
+                    'warn',
+                    9000
+                );
+            } else {
+                setBadge('error', 'Heartbeat failed: ' + error.message);
+            }
+        }
     }
 
     // ── Result submission ────────────────────────────────────────────────────
@@ -198,6 +299,7 @@
     async function submit(payload) {
         const config = getConfig();
         if (!config) {
+            setBadge('unpaired', 'Open this test from Foodie → Brain to pair the recorder.');
             toast(
                 'Foodie recorder is not connected. Open this test from Foodie → Brain to pair it.',
                 'warn',
@@ -214,8 +316,12 @@
 
         const url = config.api + '/api/brain/ingest';
 
+        setBadge('saving', 'Sending ' + describe(payload) + ' to Foodie…');
+
         try {
             const data = await postResult(url, config.token, payload);
+            console.info('[Foodie] result saved', payload);
+            setBadgeThenConnected(describe(payload), 7000);
             toast(
                 (data.duplicate ? 'Already saved — ' : 'Saved to Foodie — ') + describe(payload),
                 'ok'
@@ -223,6 +329,7 @@
         } catch (firstError) {
             if (!isRetryable(firstError)) {
                 console.warn('[Foodie] Could not save result', firstError);
+                setBadge('error', firstError.message);
                 toast('Foodie save failed: ' + firstError.message, 'err', 9000);
                 return;
             }
@@ -231,12 +338,15 @@
             try {
                 await new Promise((resolve) => setTimeout(resolve, 1500));
                 const data = await postResult(url, config.token, payload);
+                console.info('[Foodie] result saved after retry', payload);
+                setBadgeThenConnected(describe(payload), 7000);
                 toast(
                     (data.duplicate ? 'Already saved — ' : 'Saved to Foodie — ') + describe(payload),
                     'ok'
                 );
             } catch (secondError) {
                 console.warn('[Foodie] Could not save result after retry', secondError);
+                setBadge('error', secondError.message);
                 toast('Foodie save failed: ' + secondError.message, 'err', 9000);
             }
         }
@@ -428,9 +538,35 @@
 
     // ── Boot ─────────────────────────────────────────────────────────────────
 
+    if (isFoodieBrainPage) {
+        // Running on Foodie's own Brain page: read the token from the page and
+        // pair this browser immediately. This removes the need to pair through
+        // a test link and confirms the userscript is installed in this browser.
+        const tokenInput = document.getElementById('brain-token');
+        const token = tokenInput ? tokenInput.value.trim() : '';
+        if (token) {
+            storageSet(STORE_API, location.origin);
+            storageSet(STORE_TOKEN, token);
+            setBadge('connected', 'Recorder installed in this browser and paired with ' + location.origin + '.');
+            console.info('[Foodie] recorder auto-paired from the Foodie Brain page');
+            heartbeat();
+        } else {
+            setBadge('unpaired', 'No recorder token found on the Brain page.');
+        }
+        return;
+    }
+
     consumePairingHash();
 
-    if (!getConfig()) {
+    const bootConfig = getConfig();
+    if (bootConfig) {
+        setBadge('connected', 'Paired with ' + bootConfig.api + '. Checking recorder…');
+        console.info('[Foodie] recorder active on', pageName, 'page; paired with', bootConfig.api);
+        heartbeat();
+    } else {
+        setBadge('unpaired', 'Open this test from Foodie → Brain to pair the recorder.');
+        console.warn('[Foodie] recorder is not paired on', pageName, 'page');
+
         let shown = false;
         try {
             shown = sessionStorage.getItem(HINT_KEY) === '1';

@@ -7,6 +7,7 @@ import com.foodie.model.db.AppUser;
 import com.foodie.service.BrainService;
 import com.foodie.service.InvalidBrainTokenException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -22,6 +23,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/brain")
 @RequiredArgsConstructor
+@Slf4j
 public class BrainApiController {
 
     private final BrainService brainService;
@@ -33,6 +35,7 @@ public class BrainApiController {
             BrainIngestResponse response = brainService.ingest(request, token);
             return ResponseEntity.ok(response);
         } catch (InvalidBrainTokenException e) {
+            log.warn("Brain ingest rejected: missing or invalid recorder token");
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(Map.of("error", e.getMessage()));
         } catch (IllegalArgumentException e) {
@@ -45,13 +48,35 @@ public class BrainApiController {
     public ResponseEntity<?> ping(@RequestHeader(value = "X-Brain-Token", required = false) String token) {
         try {
             AppUser user = brainService.authenticate(token);
-            String name = user.getName() != null && !user.getName().isBlank()
-                    ? user.getName()
-                    : (user.getEmail() != null ? user.getEmail() : "Foodie user");
-            return ResponseEntity.ok(new BrainPingResponse("ok", name, Instant.now()));
+            return ResponseEntity.ok(new BrainPingResponse("ok", displayName(user), Instant.now()));
         } catch (InvalidBrainTokenException e) {
+            log.warn("Brain ping rejected: missing or invalid recorder token");
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(Map.of("error", e.getMessage()));
         }
+    }
+
+    /**
+     * The userscript calls this when a test page loads. It is not a result; it
+     * just proves the recorder is installed, paired, and able to reach Foodie.
+     */
+    @PostMapping("/heartbeat")
+    public ResponseEntity<?> heartbeat(@RequestHeader(value = "X-Brain-Token", required = false) String token,
+                                       @RequestHeader(value = "User-Agent", required = false) String userAgent,
+                                       @RequestParam(required = false) String page) {
+        try {
+            AppUser user = brainService.touchRecorder(token, page, userAgent);
+            return ResponseEntity.ok(new BrainPingResponse("ok", displayName(user), Instant.now()));
+        } catch (InvalidBrainTokenException e) {
+            log.warn("Brain heartbeat rejected: missing or invalid recorder token");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    private static String displayName(AppUser user) {
+        return user.getName() != null && !user.getName().isBlank()
+                ? user.getName()
+                : (user.getEmail() != null ? user.getEmail() : "Foodie user");
     }
 }

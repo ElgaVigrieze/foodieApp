@@ -119,6 +119,34 @@ class BrainIntegrationTest {
     }
 
     @Test
+    void heartbeatMarksRecorderAsSeen() throws Exception {
+        mockMvc.perform(post("/api/brain/heartbeat")
+                        .header("X-Brain-Token", "token-1")
+                        .header("User-Agent", "Mozilla/5.0 (Android 14; Mobile; rv:130.0) Gecko/130.0 Firefox/130.0")
+                        .param("page", "processing")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("ok"))
+                .andExpect(jsonPath("$.user").value("Brain Tester"));
+
+        AppUser updated = appUserRepository.findById(user.getId()).orElseThrow();
+        assertThat(updated.getBrainLastSeenAt()).isNotNull();
+        assertThat(updated.getBrainLastSeenPage()).isEqualTo("processing");
+        assertThat(updated.getBrainLastSeenAgent()).contains("Firefox/130.0");
+    }
+
+    @Test
+    void heartbeatRejectsInvalidToken() throws Exception {
+        mockMvc.perform(post("/api/brain/heartbeat")
+                        .header("X-Brain-Token", "wrong-token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error").exists());
+    }
+
+    @Test
     void corsPreflightAllowsHumanBenchmarkOrigins() throws Exception {
         mockMvc.perform(options("/api/brain/ingest")
                         .header("Origin", "https://humanbenchmark.com")
@@ -152,6 +180,12 @@ class BrainIntegrationTest {
                 .source("userscript")
                 .build());
 
+        user.setBrainLastSeenAt(Instant.parse("2026-11-07T08:06:00Z"));
+        user.setBrainLastSeenPage("reaction");
+        user.setBrainLastSeenAgent(
+                "Mozilla/5.0 (Android 14; Mobile; rv:130.0) Gecko/130.0 Firefox/130.0");
+        appUserRepository.save(user);
+
         OAuth2User oauthUser = new DefaultOAuth2User(
                 List.of(new SimpleGrantedAuthority("ROLE_USER")),
                 Map.of("sub", "google-1", "email", "brain@example.com", "name", "Brain Tester"),
@@ -178,6 +212,9 @@ class BrainIntegrationTest {
                 .andExpect(content().string(containsString("Processing Speed")))
                 .andExpect(content().string(containsString("best seen 220 ms")))
                 .andExpect(content().string(containsString("95% accuracy")))
+                .andExpect(content().string(containsString("Recorder detected")))
+                .andExpect(content().string(containsString("Recorder last seen")))
+                .andExpect(content().string(containsString("Firefox on Android")))
                 .andExpect(content().string(containsString("Add a result manually")));
     }
 }

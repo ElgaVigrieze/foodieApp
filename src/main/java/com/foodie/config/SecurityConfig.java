@@ -25,7 +25,7 @@ public class SecurityConfig {
         http
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/login", "/error", "/css/**", "/js/**", "/health",
-                                "/api/brain/ingest", "/api/brain/ping").permitAll()
+                                "/api/brain/ingest", "/api/brain/ping", "/api/brain/heartbeat").permitAll()
                         .anyRequest().authenticated()
                 )
                 .oauth2Login(oauth -> oauth
