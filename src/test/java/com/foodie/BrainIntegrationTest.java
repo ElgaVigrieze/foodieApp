@@ -119,10 +119,29 @@ class BrainIntegrationTest {
     }
 
     @Test
+    void ingestEndpointRejectsMalformedBodyWithJsonError() throws Exception {
+        mockMvc.perform(post("/api/brain/ingest")
+                        .header("X-Brain-Token", "token-1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"testType\":\"NOT_A_TEST\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").exists());
+    }
+
+    @Test
+    void ingestEndpointRejectsFutureDate() throws Exception {
+        mockMvc.perform(post("/api/brain/ingest")
+                        .header("X-Brain-Token", "token-1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"testType\":\"REACTION_TIME\",\"reactionMs\":250,\"date\":\"2999-01-01\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Date is out of range"));
+    }
+
+    @Test
     void heartbeatMarksRecorderAsSeen() throws Exception {
         mockMvc.perform(post("/api/brain/heartbeat")
                         .header("X-Brain-Token", "token-1")
-                        .header("User-Agent", "Mozilla/5.0 (Android 14; Mobile; rv:130.0) Gecko/130.0 Firefox/130.0")
                         .param("page", "processing")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
@@ -132,8 +151,6 @@ class BrainIntegrationTest {
 
         AppUser updated = appUserRepository.findById(user.getId()).orElseThrow();
         assertThat(updated.getBrainLastSeenAt()).isNotNull();
-        assertThat(updated.getBrainLastSeenPage()).isEqualTo("processing");
-        assertThat(updated.getBrainLastSeenAgent()).contains("Firefox/130.0");
     }
 
     @Test
@@ -181,9 +198,6 @@ class BrainIntegrationTest {
                 .build());
 
         user.setBrainLastSeenAt(Instant.parse("2026-11-07T08:06:00Z"));
-        user.setBrainLastSeenPage("reaction");
-        user.setBrainLastSeenAgent(
-                "Mozilla/5.0 (Android 14; Mobile; rv:130.0) Gecko/130.0 Firefox/130.0");
         appUserRepository.save(user);
 
         OAuth2User oauthUser = new DefaultOAuth2User(
@@ -213,8 +227,6 @@ class BrainIntegrationTest {
                 .andExpect(content().string(containsString("best seen 220 ms")))
                 .andExpect(content().string(containsString("95% accuracy")))
                 .andExpect(content().string(containsString("Recorder detected")))
-                .andExpect(content().string(containsString("Recorder last seen")))
-                .andExpect(content().string(containsString("Firefox on Android")))
                 .andExpect(content().string(containsString("Add a result manually")));
     }
 }

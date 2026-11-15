@@ -143,7 +143,7 @@ public class RecipeImportController {
         } catch (Exception e) {
             log.error("Recipe import confirm failed: {}", e.getMessage(), e);
             redirectAttributes.addFlashAttribute("error",
-                    "Failed to save the recipe: " + e.getMessage());
+                    "Failed to save the recipe. Please check the details and try again.");
             return "redirect:/meals/import";
         }
     }

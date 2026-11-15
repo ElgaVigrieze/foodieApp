@@ -30,8 +30,4 @@ public record VoiceParseResult(
     public static VoiceParseResult notFound(String message) {
         return new VoiceParseResult(false, null, null, null, null, null, null, null, null, message);
     }
-
-    public static VoiceParseResult error(String message) {
-        return new VoiceParseResult(false, null, null, null, null, null, null, null, null, message);
-    }
 }

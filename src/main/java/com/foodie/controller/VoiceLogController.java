@@ -2,7 +2,6 @@ package com.foodie.controller;
 
 import com.foodie.controller.dto.VoiceParseResult;
 import com.foodie.controller.dto.VoiceSubmitRequest;
-import com.foodie.controller.dto.VoiceSubmitResult;
 import com.foodie.model.MealSlot;
 import com.foodie.service.VoiceLogService;
 import lombok.RequiredArgsConstructor;
@@ -29,42 +28,31 @@ public class VoiceLogController {
 
     @PostMapping("/submit")
     public Map<String, Object> submit(@RequestBody Map<String, Object> body) {
-        Map<String, Object> response = new LinkedHashMap<>();
-        try {
-            VoiceSubmitRequest request = new VoiceSubmitRequest(
-                    (String) body.get("type"),
-                    LocalDate.parse((String) body.get("date")),
-                    body.get("slot") != null ? MealSlot.valueOf((String) body.get("slot")) : null,
-                    body.get("mealId") != null ? Long.valueOf(body.get("mealId").toString()) : null,
-                    body.get("servings") != null ? new BigDecimal(body.get("servings").toString()) : null,
-                    body.get("productId") != null ? Long.valueOf(body.get("productId").toString()) : null,
-                    body.get("quantity") != null ? new BigDecimal(body.get("quantity").toString()) : null
-            );
+        // Failures are translated to HTTP errors by ApiExceptionHandler
+        VoiceSubmitRequest request = new VoiceSubmitRequest(
+                (String) body.get("type"),
+                LocalDate.parse((String) body.get("date")),
+                body.get("slot") != null ? MealSlot.valueOf((String) body.get("slot")) : null,
+                body.get("mealId") != null ? Long.valueOf(body.get("mealId").toString()) : null,
+                body.get("servings") != null ? new BigDecimal(body.get("servings").toString()) : null,
+                body.get("productId") != null ? Long.valueOf(body.get("productId").toString()) : null,
+                body.get("quantity") != null ? new BigDecimal(body.get("quantity").toString()) : null
+        );
 
-            VoiceSubmitResult result = voiceLogService.submit(request);
-            response.put("success", result.success());
-            if (result.error() != null) {
-                response.put("error", result.error());
-            }
-        } catch (Exception e) {
-            response.put("success", false);
-            response.put("error", e.getMessage());
-        }
-        return response;
+        voiceLogService.submit(request);
+        return Map.of("success", true);
     }
 
     private Map<String, Object> toResponseMap(VoiceParseResult result) {
         Map<String, Object> map = new LinkedHashMap<>();
 
-        if (result.error() != null && !result.parsed()) {
-            map.put("error", result.error());
-            map.put("parsed", false);
-            return map;
-        }
-
         map.put("parsed", result.parsed());
 
         if (!result.parsed()) {
+            // "Nothing matched" is a normal outcome, not an error; the message tells the user why.
+            if (result.error() != null) {
+                map.put("error", result.error());
+            }
             return map;
         }
 

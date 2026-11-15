@@ -22,6 +22,8 @@ public class SchemaMigrationService {
         // Drop stale columns removed from entities (Hibernate won't do this)
         dropColumnIfExists("workouts", "completed");
         dropColumnIfExists("workouts", "date");
+        dropColumnIfExists("app_users", "brain_last_seen_agent");
+        dropColumnIfExists("app_users", "brain_last_seen_page");
     }
 
     private void dropColumnIfExists(String table, String column) {

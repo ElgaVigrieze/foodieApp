@@ -415,27 +415,27 @@ class VoiceLogServiceTest {
     class EdgeCasesAndErrorHandling {
 
         @Test
-        @DisplayName("Should return error for empty text")
-        void shouldReturnErrorForEmptyText() {
-            VoiceParseResult result = voiceLogService.parse("");
+        @DisplayName("Should throw for empty text")
+        void shouldThrowForEmptyText() {
+            var e = assertThrows(IllegalArgumentException.class, () -> voiceLogService.parse(""));
 
-            assertEquals("No text provided", result.error());
+            assertEquals("No text provided", e.getMessage());
         }
 
         @Test
-        @DisplayName("Should return error for whitespace-only text")
-        void shouldReturnErrorForWhitespaceText() {
-            VoiceParseResult result = voiceLogService.parse("   ");
+        @DisplayName("Should throw for whitespace-only text")
+        void shouldThrowForWhitespaceText() {
+            var e = assertThrows(IllegalArgumentException.class, () -> voiceLogService.parse("   "));
 
-            assertEquals("No text provided", result.error());
+            assertEquals("No text provided", e.getMessage());
         }
 
         @Test
-        @DisplayName("Should return error for null text")
-        void shouldReturnErrorForNullText() {
-            VoiceParseResult result = voiceLogService.parse(null);
+        @DisplayName("Should throw for null text")
+        void shouldThrowForNullText() {
+            var e = assertThrows(IllegalArgumentException.class, () -> voiceLogService.parse(null));
 
-            assertEquals("No text provided", result.error());
+            assertEquals("No text provided", e.getMessage());
         }
 
         @Test

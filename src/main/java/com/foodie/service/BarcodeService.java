@@ -28,10 +28,11 @@ public class BarcodeService {
      *
      * @param barcode the barcode to lookup
      * @return lookup result indicating source and product data
+     * @throws IllegalArgumentException if the barcode is missing or blank
      */
     public BarcodeLookupResult lookup(String barcode) {
         if (barcode == null || barcode.isBlank()) {
-            return BarcodeLookupResult.error("No barcode provided");
+            throw new IllegalArgumentException("No barcode provided");
         }
 
         // 1. Check local products first

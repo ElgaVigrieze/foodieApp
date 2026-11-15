@@ -10,7 +10,6 @@ import java.math.BigDecimal;
 public record BarcodeLookupResult(
         boolean found,
         String source,
-        String error,
         String barcode,
         Long productId,
         String name,
@@ -23,19 +22,14 @@ public record BarcodeLookupResult(
         BigDecimal sugar,
         String unit
 ) {
-    public static BarcodeLookupResult error(String message) {
-        return new BarcodeLookupResult(false, null, message, null, null, null, null, null, null, null, null, null, null, null);
-    }
-
     public static BarcodeLookupResult notFound(String barcode) {
-        return new BarcodeLookupResult(false, null, null, barcode, null, null, null, null, null, null, null, null, null, null);
+        return new BarcodeLookupResult(false, null, barcode, null, null, null, null, null, null, null, null, null, null);
     }
 
     public static BarcodeLookupResult fromLocalProduct(Product p) {
         return new BarcodeLookupResult(
                 true,
                 "local",
-                null,
                 p.getBarcode(),
                 p.getId(),
                 p.getName(),
@@ -54,7 +48,6 @@ public record BarcodeLookupResult(
         return new BarcodeLookupResult(
                 true,
                 "openfoodfacts",
-                null,
                 barcode,
                 null,
                 br.name(),

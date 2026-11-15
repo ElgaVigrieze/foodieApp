@@ -35,37 +35,28 @@ public class BarcodeController {
      */
     @PostMapping("/save-product")
     public Map<String, Object> saveProduct(@RequestBody Map<String, Object> body) {
-        Map<String, Object> response = new LinkedHashMap<>();
-        try {
-            BarcodeSaveRequest request = new BarcodeSaveRequest(
-                    (String) body.get("barcode"),
-                    (String) body.get("name"),
-                    toBigDecimal(body.get("calories")),
-                    toBigDecimal(body.get("protein")),
-                    toBigDecimal(body.get("carbs")),
-                    toBigDecimal(body.get("fat")),
-                    toBigDecimal(body.get("fiber")),
-                    toBigDecimal(body.get("sugar"))
-            );
+        // Failures are translated to HTTP errors by ApiExceptionHandler
+        BarcodeSaveRequest request = new BarcodeSaveRequest(
+                (String) body.get("barcode"),
+                (String) body.get("name"),
+                toBigDecimal(body.get("calories")),
+                toBigDecimal(body.get("protein")),
+                toBigDecimal(body.get("carbs")),
+                toBigDecimal(body.get("fat")),
+                toBigDecimal(body.get("fiber")),
+                toBigDecimal(body.get("sugar"))
+        );
 
-            Product product = productService.saveFromBarcode(request);
-            response.put("success", true);
-            response.put("productId", product.getId());
-            response.put("name", product.getName());
-        } catch (Exception e) {
-            response.put("success", false);
-            response.put("error", e.getMessage());
-        }
+        Product product = productService.saveFromBarcode(request);
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("success", true);
+        response.put("productId", product.getId());
+        response.put("name", product.getName());
         return response;
     }
 
     private Map<String, Object> toResponseMap(BarcodeLookupResult result) {
         Map<String, Object> map = new LinkedHashMap<>();
-
-        if (result.error() != null) {
-            map.put("error", result.error());
-            return map;
-        }
 
         map.put("found", result.found());
 

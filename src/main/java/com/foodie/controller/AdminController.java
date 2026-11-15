@@ -4,8 +4,6 @@ import com.foodie.service.CurrentUserService;
 import com.foodie.service.DatabaseMonitoringService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -14,7 +12,7 @@ import java.util.Map;
 
 /**
  * Admin endpoints for monitoring and management.
- * Restricted to admin user(s) only.
+ * Restricted to admin user(s) only; other users get a 403 from {@link ApiExceptionHandler}.
  */
 @RestController
 @RequestMapping("/api/admin")
@@ -29,28 +27,30 @@ public class AdminController {
 
     /**
      * Get database statistics.
-     * Only accessible to admin users.
+     *
+     * @throws SecurityException if the current user is not an admin
      */
     @GetMapping("/stats")
-    public ResponseEntity<Map<String, Object>> getStats() {
-        if (!isAdmin()) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(Map.of("error", "Admin access required"));
-        }
-        return ResponseEntity.ok(monitoringService.getStats());
+    public Map<String, Object> getStats() {
+        requireAdmin();
+        return monitoringService.getStats();
     }
 
     /**
      * Get top users by data volume.
-     * Only accessible to admin users.
+     *
+     * @throws SecurityException if the current user is not an admin
      */
     @GetMapping("/stats/top-users")
-    public ResponseEntity<Map<String, Object>> getTopUsers() {
+    public Map<String, Object> getTopUsers() {
+        requireAdmin();
+        return monitoringService.getTopUsers();
+    }
+
+    private void requireAdmin() {
         if (!isAdmin()) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(Map.of("error", "Admin access required"));
+            throw new SecurityException("Admin access required");
         }
-        return ResponseEntity.ok(monitoringService.getTopUsers());
     }
 
     private boolean isAdmin() {

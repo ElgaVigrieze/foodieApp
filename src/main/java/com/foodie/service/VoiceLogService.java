@@ -2,7 +2,6 @@ package com.foodie.service;
 
 import com.foodie.controller.dto.VoiceParseResult;
 import com.foodie.controller.dto.VoiceSubmitRequest;
-import com.foodie.controller.dto.VoiceSubmitResult;
 import com.foodie.model.db.Meal;
 import com.foodie.model.MealSlot;
 import com.foodie.model.db.Product;
@@ -37,13 +36,14 @@ public class VoiceLogService {
      * Parse voice input text to identify a meal or product.
      *
      * @param text the raw voice input
-     * @return parse result with matched item details
+     * @return parse result with matched item details, or a not-found result if nothing matched
+     * @throws IllegalArgumentException if the text is missing or blank
      */
     public VoiceParseResult parse(String text) {
         String normalized = normalizeText(text);
 
         if (normalized.isEmpty()) {
-            return VoiceParseResult.error("No text provided");
+            throw new IllegalArgumentException("No text provided");
         }
 
         MealSlot slot = detectSlot(normalized);
@@ -83,22 +83,15 @@ public class VoiceLogService {
      * Submit a parsed voice log entry.
      *
      * @param request the submit request with parsed data
-     * @return submit result indicating success or failure
+     * @throws IllegalArgumentException if the entry type is unknown or the data is invalid
      */
-    public VoiceSubmitResult submit(VoiceSubmitRequest request) {
-        try {
-            if ("meal".equals(request.type())) {
-                foodLogService.addEntry(request.date(), request.mealId(), request.servings(), request.slot());
-                return VoiceSubmitResult.ok();
-            } else if ("product".equals(request.type())) {
-                foodLogService.addProductEntry(request.date(), request.productId(), request.quantity(), request.slot());
-                return VoiceSubmitResult.ok();
-            } else {
-                return VoiceSubmitResult.fail("Unknown type: " + request.type());
-            }
-        } catch (Exception e) {
-            log.warn("Failed to submit voice log: {}", e.getMessage());
-            return VoiceSubmitResult.fail(e.getMessage());
+    public void submit(VoiceSubmitRequest request) {
+        if ("meal".equals(request.type())) {
+            foodLogService.addEntry(request.date(), request.mealId(), request.servings(), request.slot());
+        } else if ("product".equals(request.type())) {
+            foodLogService.addProductEntry(request.date(), request.productId(), request.quantity(), request.slot());
+        } else {
+            throw new IllegalArgumentException("Unknown type: " + request.type());
         }
     }
 

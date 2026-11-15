@@ -163,8 +163,8 @@
         <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
             <strong><i class="bi bi-broadcast"></i> Automatic recorder</strong>
             <span class="badge"
-                  th:classappend="${lastSyncLabel != null} ? 'bg-success' : (${lastSeenLabel != null} ? 'bg-info text-dark' : 'bg-secondary')"
-                  th:text="${lastSyncLabel != null} ? 'Results received' : (${lastSeenLabel != null} ? 'Recorder detected' : 'Recorder not detected')">
+                  th:classappend="${lastSyncLabel != null} ? 'bg-success' : (${recorderDetected} ? 'bg-info text-dark' : 'bg-secondary')"
+                  th:text="${lastSyncLabel != null} ? 'Results received' : (${recorderDetected} ? 'Recorder detected' : 'Recorder not detected')">
                 Recorder not detected
             </span>
         </div>
@@ -249,12 +249,6 @@
                     <div class="small text-success mt-2" th:if="${lastSyncLabel != null}">
                         <i class="bi bi-check-circle"></i> Last result received:
                         <span th:attr="data-instant=${lastSyncInstant}" th:text="${lastSyncLabel}"></span>
-                    </div>
-                    <div class="small text-muted mt-1" th:if="${lastSeenLabel != null}">
-                        <i class="bi bi-broadcast"></i> Recorder last seen:
-                        <span th:attr="data-instant=${lastSeenInstant}" th:text="${lastSeenLabel}"></span>
-                        <span th:if="${lastSeenPage != null}" th:text="| (${lastSeenPage} test)|"></span>
-                        <span th:if="${lastSeenDevice != null}" th:text="| · ${lastSeenDevice}|"></span>
                     </div>
                     <a class="small" th:href="@{/brain(month=${monthParam})}">
                         <i class="bi bi-arrow-clockwise"></i> Refresh status
@@ -416,6 +410,17 @@
         });
 
         toggleManualFields();
+
+        // Tell the server our timezone (once) so "today" and "this month" match the user's clock.
+        try {
+            var tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+            var current = (document.cookie.match(/(?:^|; )brainTz=([^;]*)/) || [])[1];
+            if (tz && decodeURIComponent(current || '') !== tz) {
+                document.cookie = 'brainTz=' + encodeURIComponent(tz)
+                    + '; path=/; max-age=31536000; SameSite=Lax';
+                if (!current) window.location.reload();
+            }
+        } catch (e) { /* server falls back to UTC */ }
     })();
 
     function toggleToken() {

@@ -5,6 +5,8 @@ import com.foodie.service.MealService;
 import com.foodie.service.ProductService;
 import com.foodie.service.CurrentUserService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -13,6 +15,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import java.math.BigDecimal;
 import java.util.List;
 
+@Slf4j
 @Controller
 @RequestMapping("/meals")
 @RequiredArgsConstructor
@@ -93,7 +96,8 @@ public class MealController {
         try {
             mealService.deleteById(id);
             redirectAttributes.addFlashAttribute("success", "Meal deleted.");
-        } catch (Exception e) {
+        } catch (DataIntegrityViolationException e) {
+            log.warn("Meal {} could not be deleted: {}", id, e.getMessage());
             redirectAttributes.addFlashAttribute("error",
                     "Cannot delete this meal — it is still referenced by a food log or meal plan. " +
                     "Archive it instead to hide it from lists.");

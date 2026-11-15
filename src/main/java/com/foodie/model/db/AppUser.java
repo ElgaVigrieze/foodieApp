@@ -59,12 +59,4 @@ public class AppUser {
     /** Last time the userscript checked in from one of the test pages. */
     @Column(name = "brain_last_seen_at")
     private Instant brainLastSeenAt;
-
-    /** Which test page the userscript last checked in from (reaction/processing). */
-    @Column(name = "brain_last_seen_page", length = 20)
-    private String brainLastSeenPage;
-
-    /** Browser/device user agent from the last userscript heartbeat. */
-    @Column(name = "brain_last_seen_agent", length = 255)
-    private String brainLastSeenAgent;
 }
