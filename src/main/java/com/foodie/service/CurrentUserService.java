@@ -5,7 +5,6 @@ import com.foodie.model.db.Household;
 import com.foodie.model.OwnedEntity;
 import com.foodie.repository.AppUserRepository;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
@@ -15,7 +14,6 @@ import java.math.BigDecimal;
 
 @Service
 @RequiredArgsConstructor
-@Slf4j
 public class CurrentUserService {
 
     private final AppUserRepository appUserRepository;
@@ -27,7 +25,7 @@ public class CurrentUserService {
             try {
                 return appUserRepository.findByGoogleId(googleId).orElse(null);
             } catch (Exception e) {
-                log.error("Failed to load AppUser for {} : {}", googleId, e.getMessage());
+                System.err.println("WARN: Failed to load AppUser for " + googleId + ": " + e.getMessage());
                 return null;
             }
         }

@@ -119,26 +119,6 @@ class BrainIntegrationTest {
     }
 
     @Test
-    void ingestEndpointRejectsMalformedBodyWithJsonError() throws Exception {
-        mockMvc.perform(post("/api/brain/ingest")
-                        .header("X-Brain-Token", "token-1")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"testType\":\"NOT_A_TEST\"}"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").exists());
-    }
-
-    @Test
-    void ingestEndpointRejectsFutureDate() throws Exception {
-        mockMvc.perform(post("/api/brain/ingest")
-                        .header("X-Brain-Token", "token-1")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"testType\":\"REACTION_TIME\",\"reactionMs\":250,\"date\":\"2999-01-01\"}"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("Date is out of range"));
-    }
-
-    @Test
     void heartbeatMarksRecorderAsSeen() throws Exception {
         mockMvc.perform(post("/api/brain/heartbeat")
                         .header("X-Brain-Token", "token-1")

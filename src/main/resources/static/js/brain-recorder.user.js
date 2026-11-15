@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Foodie Brain Recorder
 // @namespace    https://github.com/ElgaVigrieze/foodieApp
-// @version      1.2.0
+// @version      1.1.1
 // @description  Automatically records Human Benchmark reaction time and processing speed results in Foodie.
 // @author       Foodie
 // @updateURL    https://foodie-app.fly.dev/js/brain-recorder.user.js
@@ -13,7 +13,6 @@
 // @match        https://foodie-app.fly.dev/brain*
 // @match        http://localhost/brain*
 // @match        http://127.0.0.1/brain*
-// @include      /^http:\/\/(localhost|127\.0\.0\.1):\d+\/brain.*$/
 // @grant        GM_getValue
 // @grant        GM_setValue
 // @grant        GM_registerMenuCommand
@@ -50,19 +49,12 @@
 
     // ── Config storage ───────────────────────────────────────────────────────
 
-    // The token is kept in the userscript manager's private storage. The page's own
-    // localStorage is readable by every script on that site (ads, analytics), so it is
-    // used only when GM storage is unavailable.
-    const hasGmStorage =
-        typeof GM_getValue === 'function' && typeof GM_setValue === 'function';
-
     function storageGet(key) {
-        if (hasGmStorage) {
-            try {
-                return GM_getValue(key, '') || '';
-            } catch (ignored) {
-                return '';
-            }
+        try {
+            const value = GM_getValue(key, '');
+            if (value) return value;
+        } catch (ignored) {
+            // fall through to localStorage
         }
         try {
             return localStorage.getItem('foodie.' + key) || '';
@@ -72,31 +64,15 @@
     }
 
     function storageSet(key, value) {
-        if (hasGmStorage) {
-            try {
-                GM_setValue(key, value);
-            } catch (ignored) {
-                // ignore
-            }
-            return;
+        try {
+            GM_setValue(key, value);
+        } catch (ignored) {
+            // ignore
         }
         try {
             localStorage.setItem('foodie.' + key, value);
         } catch (ignored) {
             // ignore
-        }
-    }
-
-    const TRUSTED_HOSTS = ['foodie-app.fly.dev', 'localhost', '127.0.0.1'];
-
-    function isTrustedApi(api) {
-        try {
-            const url = new URL(api);
-            const local = url.hostname === 'localhost' || url.hostname === '127.0.0.1';
-            return TRUSTED_HOSTS.indexOf(url.hostname) !== -1 &&
-                (url.protocol === 'https:' || (local && url.protocol === 'http:'));
-        } catch (ignored) {
-            return false;
         }
     }
 
@@ -118,21 +94,7 @@
             const config = JSON.parse(decodeURIComponent(match[1]));
             if (!config || !config.a || !config.t) return false;
 
-            const api = String(config.a).trim().replace(/\/+$/, '');
-            const existing = getConfig();
-
-            // A link on a third-party site must not silently redirect results elsewhere.
-            if (!isTrustedApi(api) && !(existing && existing.api === api)) {
-                const ok = confirm(
-                    'Foodie Brain recorder\n\nA link is asking to send your results to:\n' + api +
-                    '\n\nOnly continue if this is your own Foodie server.');
-                if (!ok) {
-                    history.replaceState(null, '', location.pathname + location.search);
-                    return false;
-                }
-            }
-
-            storageSet(STORE_API, api);
+            storageSet(STORE_API, String(config.a).trim().replace(/\/+$/, ''));
             storageSet(STORE_TOKEN, String(config.t).trim());
             history.replaceState(null, '', location.pathname + location.search);
             toast('Foodie recorder connected. Results will save automatically.', 'ok', 6000);
@@ -304,7 +266,7 @@
                                 resolve({});
                             }
                         } else {
-                            reject(responseError(response.status, response.responseText));
+                            reject(responseError(response.status));
                         }
                     },
                     onerror: () => reject(new Error('network error')),
@@ -314,24 +276,18 @@
         }
 
         return fetch(url, { method: 'POST', headers: headers, body: body })
-            .then(async (response) => {
+            .then((response) => {
                 if (!response.ok) {
-                    throw responseError(response.status, await response.text().catch(() => ''));
+                    throw responseError(response.status);
                 }
                 return response.json();
             });
     }
 
-    function responseError(status, bodyText) {
-        let detail = '';
-        try {
-            detail = JSON.parse(bodyText).error || '';
-        } catch (ignored) {
-            // body was not JSON
-        }
+    function responseError(status) {
         const error = new Error(status === 401
             ? 'token not recognised — open a test from Foodie → Brain to reconnect'
-            : (detail ? detail + ' (' + status + ')' : 'server returned ' + status));
+            : 'server returned ' + status);
         error.status = status;
         return error;
     }
@@ -402,7 +358,6 @@
         const attempts = [];
         let lastResultText = null;
         let scoreHandled = false;
-        let unreadableSince = 0;
 
         function scan() {
             const score = document.querySelector('.view-score');
@@ -411,16 +366,10 @@
 
                 const scoreText = (score.querySelector('h1') || score).innerText || '';
                 const match = scoreText.match(/(\d+(?:\.\d+)?)\s*ms/i);
-                const average = match ? Math.round(parseFloat(match[1])) : NaN;
-                if (!Number.isFinite(average) || average <= 0) {
-                    // Wait briefly for React to render the number, then say so if it never does.
-                    unreadableSince = unreadableSince || Date.now();
-                    if (Date.now() - unreadableSince > 3000) {
-                        setBadge('error', 'Score screen found but the score could not be read; the site layout may have changed.');
-                    }
-                    return;
-                }
-                unreadableSince = 0;
+                if (!match) return; // wait until React renders the number
+
+                const average = Math.round(parseFloat(match[1]));
+                if (!Number.isFinite(average) || average <= 0) return;
 
                 scoreHandled = true;
                 const cleanAttempts = attempts.filter(
@@ -469,7 +418,6 @@
 
     function startProcessingWatcher() {
         let lastCompletion = null;
-        let unreadableSince = 0;
 
         function scan() {
             const stage = document.getElementById('ps-stage');
@@ -483,16 +431,11 @@
 
             const avgMatch = text.match(/(\d+)\s*ms/i);
             const accuracyMatch = text.match(/(\d+)\s*%/);
-            const avgMs = avgMatch ? parseInt(avgMatch[1], 10) : NaN;
-            const accuracy = accuracyMatch ? parseInt(accuracyMatch[1], 10) : NaN;
-            if (!Number.isFinite(avgMs) || !Number.isFinite(accuracy)) {
-                unreadableSince = unreadableSince || Date.now();
-                if (Date.now() - unreadableSince > 3000) {
-                    setBadge('error', 'Results screen found but the scores could not be read; the site layout may have changed.');
-                }
-                return;
-            }
-            unreadableSince = 0;
+            if (!avgMatch || !accuracyMatch) return;
+
+            const avgMs = parseInt(avgMatch[1], 10);
+            const accuracy = parseInt(accuracyMatch[1], 10);
+            if (!Number.isFinite(avgMs) || !Number.isFinite(accuracy)) return;
 
             const roundsTotalElement = document.getElementById('ps-rounds-total');
             const roundsPerLevel = parseInt(

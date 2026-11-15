@@ -1,5 +1,7 @@
 package com.foodie.service;
 
+import com.foodie.controller.dto.BrainIngestRequest;
+import com.foodie.controller.dto.BrainIngestResponse;
 import com.foodie.controller.dto.BrainMonthSummary;
 import com.foodie.model.BrainTestType;
 import com.foodie.model.db.AppUser;
@@ -7,6 +9,7 @@ import com.foodie.model.db.BrainTestResult;
 import com.foodie.repository.AppUserRepository;
 import com.foodie.repository.BrainTestResultRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -14,20 +17,16 @@ import java.security.SecureRandom;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.YearMonth;
-import java.util.Base64;
-import java.util.List;
-import java.util.NoSuchElementException;
-import java.util.Objects;
+import java.util.*;
+import java.util.stream.Collectors;
 
-/**
- * Serves the Brain web page for the logged-in (session) user. The token-authenticated
- * recorder endpoints live in {@link BrainRecorderService}.
- */
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class BrainService {
 
     private static final SecureRandom RANDOM = new SecureRandom();
+    private static final int MAX_SCORE_MS = 60_000;
 
     private final BrainTestResultRepository brainTestResultRepository;
     private final AppUserRepository appUserRepository;
@@ -39,30 +38,12 @@ public class BrainService {
     @Transactional
     public String getOrCreateToken() {
         AppUser user = requireUser();
-        if (user.getBrainToken() != null && !user.getBrainToken().isBlank()) {
-            return user.getBrainToken();
+        if (user.getBrainToken() == null || user.getBrainToken().isBlank()) {
+            user.setBrainToken(newToken());
+            user.setBrainTokenCreatedAt(Instant.now());
+            appUserRepository.save(user);
         }
-        // Conditional update: if two first-time page loads race, only one token is ever stored.
-        appUserRepository.claimBrainToken(user.getId(), newToken(), Instant.now());
-        return appUserRepository.findById(user.getId())
-                .map(AppUser::getBrainToken)
-                .orElseThrow(() -> new IllegalStateException("Not authenticated"));
-    }
-
-    /** Everything the Brain page needs about the recorder, from a single user lookup. */
-    public record RecorderStatus(String token, Instant lastSyncAt, Instant lastSeenAt,
-                                 String lastSeenPage, String lastSeenAgent) {
-    }
-
-    @Transactional
-    public RecorderStatus getRecorderStatus() {
-        AppUser user = requireUser();
-        String token = user.getBrainToken();
-        if (token == null || token.isBlank()) {
-            token = getOrCreateToken();
-        }
-        return new RecorderStatus(token, user.getBrainLastSyncAt(), user.getBrainLastSeenAt(),
-                user.getBrainLastSeenPage(), user.getBrainLastSeenAgent());
+        return user.getBrainToken();
     }
 
     @Transactional
@@ -79,7 +60,95 @@ public class BrainService {
         return user.getBrainToken();
     }
 
-    // ── Manual entry ─────────────────────────────────────────────────────────
+    public Instant getLastSyncAt() {
+        AppUser user = requireUser();
+        return user.getBrainLastSyncAt();
+    }
+
+    public Instant getLastSeenAt() {
+        AppUser user = requireUser();
+        return user.getBrainLastSeenAt();
+    }
+
+    public String getLastSeenPage() {
+        AppUser user = requireUser();
+        return user.getBrainLastSeenPage();
+    }
+
+    public String getLastSeenAgent() {
+        AppUser user = requireUser();
+        return user.getBrainLastSeenAgent();
+    }
+
+    /**
+     * Called by the userscript when it loads a test page. It lets the Brain page
+     * show "recorder detected" even before the first result is submitted, which
+     * makes installation/pairing problems obvious.
+     */
+    @Transactional
+    public AppUser touchRecorder(String token, String page, String userAgent) {
+        AppUser user = authenticate(token);
+        user.setBrainLastSeenAt(Instant.now());
+        user.setBrainLastSeenPage(normalizePage(page));
+        user.setBrainLastSeenAgent(truncate(userAgent, 255));
+        log.info("Brain recorder heartbeat for user {} from page {} ({})",
+                user.getId(), page, user.getBrainLastSeenAgent());
+        return appUserRepository.save(user);
+    }
+
+    @Transactional(readOnly = true)
+    public AppUser authenticate(String token) {
+        if (token == null || token.isBlank()) {
+            throw new InvalidBrainTokenException();
+        }
+        return appUserRepository.findByBrainToken(token)
+                .orElseThrow(InvalidBrainTokenException::new);
+    }
+
+    // ── Result ingestion ─────────────────────────────────────────────────────
+
+    @Transactional
+    public BrainIngestResponse ingest(BrainIngestRequest request, String token) {
+        AppUser user = authenticate(token);
+
+        if (request == null) {
+            throw new IllegalArgumentException("Missing result body");
+        }
+
+        // The recorder retries on flaky connections; a client key keeps that idempotent.
+        // Scope the lookup to this user so one user's keys can never expose another's result.
+        String requestClientKey = blankToNull(request.clientKey());
+        if (requestClientKey != null) {
+            Optional<BrainTestResult> existing = brainTestResultRepository
+                    .findByOwnerIdAndClientKey(user.getId(), requestClientKey);
+            if (existing.isPresent()) {
+                return BrainIngestResponse.from(existing.get(), true);
+            }
+        }
+
+        BrainTestResult result = buildResult(
+                user,
+                request.testType(),
+                request.date(),
+                request.reactionMs(),
+                request.bestReactionMs(),
+                request.attempts(),
+                request.processingAvgMs(),
+                request.processingAccuracy(),
+                request.levels(),
+                request.roundsPerLevel(),
+                requestClientKey,
+                request.source()
+        );
+
+        BrainTestResult saved = brainTestResultRepository.save(result);
+
+        user.setBrainLastSyncAt(Instant.now());
+        appUserRepository.save(user);
+
+        log.info("Brain result saved for user {}: {} {}", user.getId(), saved.getTestType(), saved.getTestDate());
+        return BrainIngestResponse.from(saved, false);
+    }
 
     @Transactional
     public BrainTestResult addManual(LocalDate date,
@@ -88,7 +157,7 @@ public class BrainService {
                                      Integer processingAvgMs,
                                      Integer processingAccuracy) {
         AppUser user = requireUser();
-        BrainTestResult result = BrainResultFactory.build(
+        BrainTestResult result = buildResult(
                 user,
                 testType,
                 date,
@@ -105,14 +174,81 @@ public class BrainService {
         return brainTestResultRepository.save(result);
     }
 
-    @Transactional
-    public void delete(Long id) {
-        AppUser user = requireUser();
-        // Scoped to the owner so another user's id looks exactly like a missing one.
-        BrainTestResult result = brainTestResultRepository.findByIdAndOwnerId(id, user.getId())
-                .orElseThrow(() -> new NoSuchElementException("Result not found"));
+    private BrainTestResult buildResult(AppUser owner,
+                                        BrainTestType testType,
+                                        LocalDate date,
+                                        Integer reactionMs,
+                                        Integer bestReactionMs,
+                                        List<Integer> attempts,
+                                        Integer processingAvgMs,
+                                        Integer processingAccuracy,
+                                        Integer levels,
+                                        Integer roundsPerLevel,
+                                        String clientKey,
+                                        String source) {
+        if (testType == null) {
+            throw new IllegalArgumentException("Please choose a test type");
+        }
 
-        brainTestResultRepository.delete(result);
+        String normalizedClientKey = blankToNull(clientKey);
+        if (normalizedClientKey != null && normalizedClientKey.length() > 64) {
+            throw new IllegalArgumentException("clientKey must be at most 64 characters");
+        }
+
+        String normalizedSource = source == null || source.isBlank() ? "manual" : source.trim();
+        if (normalizedSource.length() > 32) {
+            normalizedSource = normalizedSource.substring(0, 32);
+        }
+
+        BrainTestResult.BrainTestResultBuilder builder = BrainTestResult.builder()
+                .owner(owner)
+                .testType(testType)
+                .testDate(date != null ? date : LocalDate.now())
+                .recordedAt(Instant.now())
+                .clientKey(normalizedClientKey)
+                .source(normalizedSource);
+
+        if (testType == BrainTestType.REACTION_TIME) {
+            validateScore(reactionMs, "Reaction time");
+            if (bestReactionMs != null) {
+                validateScore(bestReactionMs, "Best reaction time");
+            }
+
+            List<Integer> cleanAttempts = attempts == null ? List.of() : attempts.stream()
+                    .filter(Objects::nonNull)
+                    .filter(value -> value > 0 && value <= MAX_SCORE_MS)
+                    .limit(50)
+                    .toList();
+
+            Integer fastest = cleanAttempts.stream().min(Integer::compareTo).orElse(bestReactionMs);
+
+            builder.reactionMs(reactionMs)
+                    .bestReactionMs(fastest)
+                    .attemptsCount(cleanAttempts.isEmpty() ? null : cleanAttempts.size());
+
+            if (!cleanAttempts.isEmpty()) {
+                builder.attemptsCsv(cleanAttempts.stream()
+                        .map(String::valueOf)
+                        .collect(Collectors.joining(",")));
+            }
+        } else {
+            validateScore(processingAvgMs, "Processing speed");
+            if (processingAccuracy == null || processingAccuracy < 0 || processingAccuracy > 100) {
+                throw new IllegalArgumentException("Accuracy must be between 0 and 100");
+            }
+            builder.processingAvgMs(processingAvgMs)
+                    .processingAccuracy(processingAccuracy)
+                    .levels(levels != null ? levels : 3)
+                    .roundsPerLevel(roundsPerLevel != null ? roundsPerLevel : 10);
+        }
+
+        return builder.build();
+    }
+
+    private void validateScore(Integer value, String label) {
+        if (value == null || value <= 0 || value > MAX_SCORE_MS) {
+            throw new IllegalArgumentException(label + " must be between 1 and " + MAX_SCORE_MS + " ms");
+        }
     }
 
     // ── Monthly scoreboard ───────────────────────────────────────────────────
@@ -181,6 +317,19 @@ public class BrainService {
         );
     }
 
+    @Transactional
+    public void delete(Long id) {
+        AppUser user = requireUser();
+        BrainTestResult result = brainTestResultRepository.findById(id)
+                .orElseThrow(() -> new NoSuchElementException("Result not found: " + id));
+
+        if (result.getOwner() == null || !result.getOwner().getId().equals(user.getId())) {
+            throw new SecurityException("Not authorized to delete this result");
+        }
+
+        brainTestResultRepository.delete(result);
+    }
+
     // ── Helpers ──────────────────────────────────────────────────────────────
 
     private AppUser requireUser() {
@@ -193,6 +342,26 @@ public class BrainService {
 
     private static Double average(List<Integer> values) {
         return values.isEmpty() ? null : values.stream().mapToInt(Integer::intValue).average().orElse(0);
+    }
+
+    private static String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
+    }
+
+    private static String normalizePage(String page) {
+        if (page == null) {
+            return null;
+        }
+        String value = page.trim().toLowerCase(Locale.ROOT);
+        return "reaction".equals(value) || "processing".equals(value) ? value : null;
+    }
+
+    private static String truncate(String value, int maxLength) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.length() <= maxLength ? trimmed : trimmed.substring(0, maxLength);
     }
 
     private static String newToken() {
