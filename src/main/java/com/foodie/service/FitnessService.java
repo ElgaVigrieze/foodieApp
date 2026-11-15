@@ -1,5 +1,6 @@
 package com.foodie.service;
 
+import com.foodie.exception.NotFoundException;
 import com.foodie.model.db.AppUser;
 import com.foodie.model.db.TrainingPlanEntry;
 import com.foodie.model.db.Workout;
@@ -31,9 +32,12 @@ public class FitnessService {
         return workoutRepository.findByOwnerIdOrderByNameAsc(user.getId());
     }
 
+    /** Loads a workout the current user is allowed to see. */
     public Workout findById(Long id) {
-        return workoutRepository.findById(id)
-                .orElseThrow(() -> new NoSuchElementException("Workout not found: " + id));
+        Workout workout = workoutRepository.findById(id)
+                .orElseThrow(() -> NotFoundException.of("Workout", id));
+        currentUserService.validateUserAccess(workout);
+        return workout;
     }
 
     @Transactional
@@ -45,8 +49,9 @@ public class FitnessService {
 
     @Transactional
     public void delete(Long id) {
-        trainingPlanEntryRepository.deleteByWorkoutId(id);
-        workoutRepository.deleteById(id);
+        Workout workout = findById(id); // verifies access before anything is deleted
+        trainingPlanEntryRepository.deleteByWorkoutId(workout.getId());
+        workoutRepository.delete(workout);
     }
 
     // ── Training plan ────────────────────────────────────────────────────────
@@ -92,14 +97,21 @@ public class FitnessService {
 
     @Transactional
     public void removeEntry(Long entryId) {
-        trainingPlanEntryRepository.deleteById(entryId);
+        trainingPlanEntryRepository.delete(findEntry(entryId));
     }
 
     @Transactional
     public void toggleEntryCompleted(Long entryId) {
-        TrainingPlanEntry entry = trainingPlanEntryRepository.findById(entryId)
-                .orElseThrow(() -> new NoSuchElementException("Entry not found: " + entryId));
+        TrainingPlanEntry entry = findEntry(entryId);
         entry.setCompleted(!entry.isCompleted());
         trainingPlanEntryRepository.save(entry);
+    }
+
+    /** Loads a training-plan entry the current user is allowed to change. */
+    private TrainingPlanEntry findEntry(Long entryId) {
+        TrainingPlanEntry entry = trainingPlanEntryRepository.findById(entryId)
+                .orElseThrow(() -> NotFoundException.of("Entry", entryId));
+        currentUserService.validateUserAccess(entry);
+        return entry;
     }
 }

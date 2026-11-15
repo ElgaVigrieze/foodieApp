@@ -1,20 +1,18 @@
 package com.foodie.service;
 
 import com.foodie.client.CloudflareAiClient;
+import com.foodie.client.SafeHttpFetcher;
+import com.foodie.exception.UnsafeUrlException;
 import com.foodie.model.RecipeExtract;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestClient;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.net.InetAddress;
-import java.net.URI;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -31,119 +29,15 @@ import java.util.regex.Pattern;
 public class RecipeScraperService {
 
     private final CloudflareAiClient cloudflareAiClient;
-    private final RestClient webClient;
+    private final SafeHttpFetcher httpFetcher;
 
-    public RecipeScraperService(
-            CloudflareAiClient cloudflareAiClient,
-            @Value("${app.cloudflare.connect-timeout-ms:15000}") int connectTimeout,
-            @Value("${app.cloudflare.read-timeout-ms:60000}") int readTimeout) {
+    public RecipeScraperService(CloudflareAiClient cloudflareAiClient, SafeHttpFetcher httpFetcher) {
         this.cloudflareAiClient = cloudflareAiClient;
-
-        // Separate RestClient for web scraping (not AI calls)
-        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
-        factory.setConnectTimeout(connectTimeout);
-        factory.setReadTimeout(readTimeout);
-        this.webClient = RestClient.builder().requestFactory(factory).build();
+        this.httpFetcher = httpFetcher;
     }
 
     public boolean isAvailable() {
         return cloudflareAiClient.isAvailable();
-    }
-
-    // ── URL Validation (SSRF Protection) ───────────────────────────────────
-
-    private static final Set<String> BLOCKED_HOSTS = Set.of(
-            "localhost", "127.0.0.1", "0.0.0.0", "[::1]", "metadata.google.internal"
-    );
-
-    /**
-     * Validates a URL to prevent SSRF attacks.
-     * Blocks: private IPs, localhost, cloud metadata endpoints, non-HTTP(S) schemes.
-     */
-    private void validateUrl(String url) {
-        if (url == null || url.isBlank()) {
-            throw new IllegalArgumentException("URL cannot be empty");
-        }
-
-        URI uri;
-        try {
-            uri = new URI(url);
-        } catch (Exception e) {
-            throw new IllegalArgumentException("Invalid URL format: " + e.getMessage());
-        }
-
-        String scheme = uri.getScheme();
-        if (scheme == null || (!scheme.equalsIgnoreCase("http") && !scheme.equalsIgnoreCase("https"))) {
-            throw new IllegalArgumentException("Only HTTP and HTTPS URLs are allowed");
-        }
-
-        String host = uri.getHost();
-        if (host == null || host.isBlank()) {
-            throw new IllegalArgumentException("URL must have a valid host");
-        }
-
-        String hostLower = host.toLowerCase();
-        if (BLOCKED_HOSTS.contains(hostLower)) {
-            throw new IllegalArgumentException("Access to " + host + " is not allowed");
-        }
-
-        if (hostLower.equals("169.254.169.254") ||
-            hostLower.endsWith(".internal") ||
-            hostLower.startsWith("metadata.")) {
-            throw new IllegalArgumentException("Access to cloud metadata endpoints is not allowed");
-        }
-
-        try {
-            InetAddress address = InetAddress.getByName(host);
-
-            if (address.isLoopbackAddress()) {
-                throw new IllegalArgumentException("Loopback addresses are not allowed");
-            }
-            if (address.isSiteLocalAddress()) {
-                throw new IllegalArgumentException("Private network addresses are not allowed");
-            }
-            if (address.isLinkLocalAddress()) {
-                throw new IllegalArgumentException("Link-local addresses are not allowed");
-            }
-            if (address.isAnyLocalAddress()) {
-                throw new IllegalArgumentException("Wildcard addresses are not allowed");
-            }
-
-            byte[] addr = address.getAddress();
-            if (addr.length == 4) {
-                int first = addr[0] & 0xFF;
-                int second = addr[1] & 0xFF;
-
-                if (first == 10) {
-                    throw new IllegalArgumentException("Private network addresses (10.x.x.x) are not allowed");
-                }
-                if (first == 172 && second >= 16 && second <= 31) {
-                    throw new IllegalArgumentException("Private network addresses (172.16-31.x.x) are not allowed");
-                }
-                if (first == 192 && second == 168) {
-                    throw new IllegalArgumentException("Private network addresses (192.168.x.x) are not allowed");
-                }
-                if (first == 169 && second == 254) {
-                    throw new IllegalArgumentException("Link-local addresses (169.254.x.x) are not allowed");
-                }
-            }
-
-            if (addr.length == 16) {
-                if ((addr[0] & 0xFF) == 0xfd) {
-                    throw new IllegalArgumentException("IPv6 unique local addresses are not allowed");
-                }
-                if ((addr[0] & 0xFF) == 0xfe && (addr[1] & 0xC0) == 0x80) {
-                    throw new IllegalArgumentException("IPv6 link-local addresses are not allowed");
-                }
-            }
-
-        } catch (IllegalArgumentException e) {
-            throw e;
-        } catch (Exception e) {
-            log.warn("Could not resolve hostname {}: {}", host, e.getMessage());
-        }
-
-        log.debug("URL validation passed for: {}", url);
     }
 
     // ── Public API ─────────────────────────────────────────────────────────
@@ -153,7 +47,7 @@ public class RecipeScraperService {
      */
     public RecipeExtract extractFromUrl(String url) {
         log.info("Extracting recipe from URL: {}", url);
-        validateUrl(url);
+        httpFetcher.validate(url);
 
         String pageText = fetchPageText(url);
 
@@ -198,19 +92,20 @@ public class RecipeScraperService {
 
     // ── Page fetching ──────────────────────────────────────────────────────
 
+    private static final Map<String, String> BROWSER_HEADERS = Map.of(
+            "User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+            "Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Accept-Language", "en-US,en;q=0.9",
+            "Accept-Encoding", "identity");
+
     private String fetchPageText(String url) {
         try {
-            String html = webClient.get()
-                    .uri(url)
-                    .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
-                    .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
-                    .header("Accept-Language", "en-US,en;q=0.9")
-                    .header("Accept-Encoding", "identity")
-                    .retrieve()
-                    .body(String.class);
-
-            if (html == null) return null;
-            return stripHtml(html);
+            String html = httpFetcher.fetchText(url, BROWSER_HEADERS);
+            return html == null ? null : stripHtml(html);
+        } catch (UnsafeUrlException e) {
+            // A redirect (or DNS answer) led somewhere internal: refuse, do not fall back to the AI.
+            log.warn("Blocked unsafe fetch for {}: {}", url, e.getMessage());
+            throw e;
         } catch (Exception e) {
             log.warn("Failed to fetch URL {}: {} — {}", url, e.getClass().getSimpleName(), e.getMessage());
             return null;

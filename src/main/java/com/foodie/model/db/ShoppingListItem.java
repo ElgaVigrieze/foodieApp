@@ -1,5 +1,6 @@
 package com.foodie.model.db;
 
+import com.foodie.model.OwnedEntity;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PositiveOrZero;
@@ -17,7 +18,7 @@ import java.time.LocalDate;
 @Getter @Setter
 @NoArgsConstructor @AllArgsConstructor
 @Builder
-public class ShoppingListItem {
+public class ShoppingListItem implements OwnedEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -48,6 +49,16 @@ public class ShoppingListItem {
     /** Optional short comment for this item (max 50 chars). */
     @Column(length = 50)
     private String comment;
+
+    /** Who added the item. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "owner_id")
+    private AppUser owner;
+
+    /** The household whose list this item belongs to (null only for old items V3 could not attribute). */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "household_id")
+    private Household household;
 
     @Transient
     public BigDecimal getCost() {

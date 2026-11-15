@@ -1,5 +1,6 @@
 package com.foodie.service;
 
+import com.foodie.exception.UnauthenticatedException;
 import com.foodie.model.*;
 import com.foodie.model.db.AppUser;
 import com.foodie.model.db.Household;
@@ -24,11 +25,11 @@ public class HouseholdService {
         // Get user directly from OAuth principal to avoid entity loading issues
         var auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null || !(auth.getPrincipal() instanceof OAuth2User oAuth2User)) {
-            throw new IllegalStateException("Must be logged in to create a household");
+            throw new UnauthenticatedException("Must be logged in to create a household");
         }
         String googleId = oAuth2User.getAttribute("sub");
         AppUser user = appUserRepository.findByGoogleId(googleId)
-                .orElseThrow(() -> new IllegalStateException("User not found in DB"));
+                .orElseThrow(() -> new UnauthenticatedException("User not found in DB"));
         Household household = Household.builder().name(name).build();
         household = householdRepository.save(household);
         user.setHousehold(household);

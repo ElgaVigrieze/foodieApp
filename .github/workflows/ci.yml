@@ -6,8 +6,17 @@ on:
   pull_request:
     branches: [ main, master ]
 
+# A newer push to the same branch/PR cancels the run that is still going.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
 jobs:
   build:
+    name: Build, test and coverage
     runs-on: ubuntu-latest
 
     steps:
@@ -21,15 +30,17 @@ jobs:
         distribution: 'temurin'
         cache: maven
 
-    - name: Build with Maven
-      run: mvn -B package -DskipTests --file pom.xml
+    # `verify` compiles, runs ALL tests, then the JaCoCo report and coverage check.
+    # The Spring integration tests start a PostgreSQL 18 container with Testcontainers (Docker is
+    # preinstalled on the runner) and build the schema through the real Flyway migrations.
+    - name: Build, test and check coverage
+      run: mvn -B verify -Pcoverage
 
-    - name: Run tests
-      run: mvn -B test --file pom.xml
-
-    - name: Upload test results
+    - name: Upload test results and coverage report
       uses: actions/upload-artifact@v4
       if: always()
       with:
         name: test-results
-        path: target/surefire-reports/
+        path: |
+          target/surefire-reports/
+          target/site/jacoco/

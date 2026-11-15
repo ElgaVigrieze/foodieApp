@@ -1,6 +1,9 @@
 package com.foodie.service;
 
+import com.foodie.exception.ConflictException;
+import com.foodie.exception.NotFoundException;
 import com.foodie.model.*;
+import com.foodie.model.db.Household;
 import com.foodie.model.db.Meal;
 import com.foodie.model.db.MealIngredient;
 import com.foodie.model.db.MealPlan;
@@ -33,27 +36,15 @@ public class MealPlanService {
     @Transactional
     public MealPlan getOrCreateForWeek(LocalDate date) {
         LocalDate monday = date.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
-        Long hhId = currentUserService.getCurrentHouseholdId();
+        Household household = currentUserService.requireCurrentHousehold();
 
-        if (hhId != null) {
-            return mealPlanRepository.findByWeekStartAndHouseholdId(monday, hhId)
-                    .orElseGet(() -> mealPlanRepository.save(
-                            MealPlan.builder()
-                                    .name("Week of " + monday)
-                                    .weekStart(monday)
-                                    .owner(currentUserService.getCurrentUser())
-                                    .household(currentUserService.getCurrentHousehold())
-                                    .build()
-                    ));
-        }
-
-        // No household - create personal plan with owner
-        return mealPlanRepository.findByWeekStart(monday)
+        return mealPlanRepository.findByWeekStartAndHouseholdId(monday, household.getId())
                 .orElseGet(() -> mealPlanRepository.save(
                         MealPlan.builder()
                                 .name("Week of " + monday)
                                 .weekStart(monday)
                                 .owner(currentUserService.getCurrentUser())
+                                .household(household)
                                 .build()
                 ));
     }
@@ -62,7 +53,8 @@ public class MealPlanService {
     public void addEntry(LocalDate weekStart, DayOfWeek day, MealSlot slot, Long mealId, Integer servings) {
         MealPlan plan = getOrCreateForWeek(weekStart);
         Meal meal = mealRepository.findById(mealId)
-                .orElseThrow(() -> new IllegalArgumentException("Meal not found: " + mealId));
+                .orElseThrow(() -> NotFoundException.of("Meal", mealId));
+        currentUserService.validateUserAccess(meal);
 
         MealPlanEntry entry = MealPlanEntry.builder()
                 .dayOfWeek(day)
@@ -78,7 +70,7 @@ public class MealPlanService {
     public void removeEntry(Long planId, Long entryId) {
         MealPlan plan = findPlanByIdWithAccess(planId);
         if (plan.isFrozen()) {
-            throw new IllegalStateException("Cannot remove entries from a frozen plan.");
+            throw new ConflictException("Cannot remove entries from a frozen plan.");
         }
         plan.getEntries().removeIf(e -> e.getId().equals(entryId));
         mealPlanRepository.save(plan);
@@ -178,7 +170,7 @@ public class MealPlanService {
 
     private MealPlan findPlanByIdWithAccess(Long planId) {
         MealPlan plan = mealPlanRepository.findById(planId)
-                .orElseThrow(() -> new IllegalArgumentException("Plan not found: " + planId));
+                .orElseThrow(() -> NotFoundException.of("Plan", planId));
         currentUserService.validateUserAccess(plan);
         return plan;
     }

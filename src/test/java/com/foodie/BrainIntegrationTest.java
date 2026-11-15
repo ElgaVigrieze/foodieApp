@@ -19,6 +19,9 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.core.user.DefaultOAuth2User;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
+import com.foodie.support.PostgresTestConfig;
+import org.springframework.context.annotation.Import;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.Instant;
@@ -33,17 +36,13 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@SpringBootTest(properties = {
-        "spring.datasource.url=jdbc:h2:mem:brain-test;DB_CLOSE_DELAY=-1",
-        "spring.datasource.driver-class-name=org.h2.Driver",
-        "spring.datasource.username=sa",
-        "spring.datasource.password=",
-        "spring.jpa.hibernate.ddl-auto=create-drop",
-        "spring.security.oauth2.client.registration.google.client-id=test-client",
-        "spring.security.oauth2.client.registration.google.client-secret=test-secret"
-})
+@SpringBootTest
+@Import(PostgresTestConfig.class)
+@ActiveProfiles("test")
 @AutoConfigureMockMvc
 class BrainIntegrationTest {
+
+    @Autowired org.springframework.jdbc.core.JdbcTemplate jdbc;
 
     @Autowired
     private MockMvc mockMvc;
@@ -54,18 +53,25 @@ class BrainIntegrationTest {
     @Autowired
     private BrainTestResultRepository brainTestResultRepository;
 
+    @Autowired
+    private com.foodie.repository.HouseholdRepository householdRepository;
+
     private AppUser user;
 
     @BeforeEach
     void setUp() {
+        com.foodie.support.DatabaseCleaner.clean(jdbc);
         brainTestResultRepository.deleteAll();
         appUserRepository.deleteAll();
 
+        // Every user is in a household; without one, pages redirect to the household setup.
+        var household = householdRepository.save(com.foodie.model.db.Household.builder().name("Brain").build());
         user = appUserRepository.save(AppUser.builder()
                 .googleId("google-1")
                 .email("brain@example.com")
                 .name("Brain Tester")
                 .brainToken("token-1")
+                .household(household)
                 .build());
     }
 

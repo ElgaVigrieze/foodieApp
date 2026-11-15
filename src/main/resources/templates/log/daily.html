@@ -316,7 +316,7 @@
         var slot = document.getElementById('photo-slot').value;
         var payload = {
             date: dateStr,
-            description: analysisData.description,
+            description: (analysisData.description || '').substring(0, 500),
             calories: analysisData.calories,
             protein: analysisData.protein,
             carbs: analysisData.carbs,
@@ -439,13 +439,18 @@
         var dateStr = document.querySelector('input[name="date"]').value;
         parsedData.date = dateStr;
         if (parsedData.type === 'product') {
-            parsedData.quantity = parseFloat(document.getElementById('voice-quantity-input').value) || 0.1;
+            parsedData.quantity = Math.max(parseFloat(document.getElementById('voice-quantity-input').value) || 0.1, 0.01);
         }
         fetch('/api/voice/submit', {
             method: 'POST',
             headers: {'Content-Type': 'application/json', [document.querySelector('meta[name=_csrf_header]').content]: document.querySelector('meta[name=_csrf]').content},
             body: JSON.stringify(parsedData)
-        }).then(function() { location.reload(); });
+        }).then(function(r) {
+            return r.json().catch(function() { return {}; }).then(function(data) {
+                if (!r.ok) throw new Error(data.error || 'Could not log entry');
+                location.reload();
+            });
+        }).catch(function(e) { status.textContent = 'Error: ' + e.message; });
     });
 
     cancelBtn.addEventListener('click', function() { modal.classList.add('d-none'); });

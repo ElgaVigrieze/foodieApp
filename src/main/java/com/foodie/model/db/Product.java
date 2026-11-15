@@ -32,8 +32,9 @@ public class Product implements OwnedEntity {
     @Enumerated(EnumType.STRING)
     private ProductCategory category;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "household_id")
+    /** Every product belongs to exactly one household. */
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "household_id", nullable = false)
     private Household household;
 
     @NotNull
@@ -75,10 +76,7 @@ public class Product implements OwnedEntity {
         return carbs.subtract(fiber);
     }
 
-    /**
-     * Products are household-owned, not individually owned.
-     * Returns null since there's no owner field.
-     */
+    /** Products belong to a household, not to a person. */
     @Override
     public AppUser getOwner() {
         return null;

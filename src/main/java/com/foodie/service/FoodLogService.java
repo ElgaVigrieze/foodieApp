@@ -1,5 +1,7 @@
 package com.foodie.service;
 
+import com.foodie.exception.ForbiddenException;
+import com.foodie.exception.NotFoundException;
 import com.foodie.controller.dto.DailyTotals;
 import com.foodie.controller.dto.DayStatus;
 import com.foodie.controller.dto.PhotoEntryRequest;
@@ -30,11 +32,11 @@ public class FoodLogService {
 
     /**
      * Verifies the current user owns the given food log entry.
-     * @throws SecurityException if the user doesn't own the entry
+     * @throws ForbiddenException if the user doesn't own the entry
      */
     private FoodLog findByIdAndVerifyOwnership(Long id) {
         FoodLog entry = foodLogRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Entry not found: " + id));
+                .orElseThrow(() -> NotFoundException.of("Entry", id));
 
         currentUserService.validateUserAccess(entry);
 
@@ -51,21 +53,23 @@ public class FoodLogService {
 
     public void addEntry(LocalDate date, Long mealId, BigDecimal servingsConsumed, MealSlot slot) {
         Meal meal = mealRepository.findById(mealId)
-                .orElseThrow(() -> new IllegalArgumentException("Meal not found: " + mealId));
+                .orElseThrow(() -> NotFoundException.of("Meal", mealId));
+        currentUserService.validateUserAccess(meal);
         FoodLog entry = FoodLog.builder()
                 .date(date)
                 .meal(meal)
                 .servingsConsumed(servingsConsumed)
                 .slot(slot)
                 .owner(currentUserService.getCurrentUser())
-                .household(currentUserService.getCurrentHousehold())
+                .household(currentUserService.requireCurrentHousehold())
                 .build();
         foodLogRepository.save(entry);
     }
 
     public void addProductEntry(LocalDate date, Long productId, BigDecimal quantity, MealSlot slot) {
         Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new IllegalArgumentException("Product not found: " + productId));
+                .orElseThrow(() -> NotFoundException.of("Product", productId));
+        currentUserService.validateUserAccess(product);
         FoodLog entry = FoodLog.builder()
                 .date(date)
                 .product(product)
@@ -73,7 +77,7 @@ public class FoodLogService {
                 .servingsConsumed(BigDecimal.ONE)
                 .slot(slot)
                 .owner(currentUserService.getCurrentUser())
-                .household(currentUserService.getCurrentHousehold())
+                .household(currentUserService.requireCurrentHousehold())
                 .build();
         foodLogRepository.save(entry);
     }
@@ -95,7 +99,7 @@ public class FoodLogService {
                 .servingsConsumed(BigDecimal.ONE)
                 .slot(request.slot())
                 .owner(currentUserService.getCurrentUser())
-                .household(currentUserService.getCurrentHousehold())
+                .household(currentUserService.requireCurrentHousehold())
                 .build();
         foodLogRepository.save(entry);
     }

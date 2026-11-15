@@ -1,5 +1,7 @@
 package com.foodie.service;
 
+import com.foodie.exception.UnauthenticatedException;
+import com.foodie.exception.ForbiddenException;
 import com.foodie.model.db.AppUser;
 import com.foodie.model.db.Household;
 import com.foodie.model.OwnedEntity;
@@ -24,12 +26,9 @@ public class CurrentUserService {
         var authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication != null && authentication.getPrincipal() instanceof OAuth2User oAuth2User) {
             String googleId = oAuth2User.getAttribute("sub");
-            try {
-                return appUserRepository.findByGoogleId(googleId).orElse(null);
-            } catch (Exception e) {
-                log.error("Failed to load AppUser for {} : {}", googleId, e.getMessage());
-                return null;
-            }
+            // Database failures propagate (reported as a 500): "could not load the user" must not
+            // be mistaken for "nobody is logged in".
+            return appUserRepository.findByGoogleId(googleId).orElse(null);
         }
         return null;
     }
@@ -42,6 +41,24 @@ public class CurrentUserService {
     public Long getCurrentHouseholdId() {
         Household h = getCurrentHousehold();
         return h != null ? h.getId() : null;
+    }
+
+    /**
+     * The current user's household. Every logged-in user has one: {@code HouseholdRequiredInterceptor}
+     * sends users without a household to the setup page before they reach anything else.
+     *
+     * @throws UnauthenticatedException if nobody is logged in
+     * @throws ForbiddenException       if the user has not created or joined a household yet
+     */
+    public Household requireCurrentHousehold() {
+        AppUser user = getCurrentUser();
+        if (user == null) {
+            throw new UnauthenticatedException("Not authenticated");
+        }
+        if (user.getHousehold() == null) {
+            throw new ForbiddenException("Create or join a household first");
+        }
+        return user.getHousehold();
     }
 
     public boolean isOwner() {
@@ -66,12 +83,12 @@ public class CurrentUserService {
     /**
      * Validates that the current user has access to the given entity.
      * Access is granted if the user owns the entity OR is in the same household.
-     * @throws SecurityException if not authenticated or not authorized
+     * @throws ForbiddenException if not authenticated or not authorized
      */
     public void validateUserAccess(OwnedEntity entry) {
         AppUser currentUser = getCurrentUser();
         if (currentUser == null) {
-            throw new SecurityException("Not authenticated");
+            throw new UnauthenticatedException("Not authenticated");
         }
 
         boolean isOwner = entry.getOwner() != null &&
@@ -81,7 +98,7 @@ public class CurrentUserService {
                 entry.getHousehold().getId().equals(currentUser.getHousehold().getId());
 
         if (!isOwner && !isSameHousehold) {
-            throw new SecurityException("Not authorized to access this entry");
+            throw new ForbiddenException("Not authorized to access this entry");
         }
     }
 }

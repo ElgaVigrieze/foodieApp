@@ -1,9 +1,11 @@
 package com.foodie.controller;
 
+import com.foodie.controller.form.MealPlanForms;
 import com.foodie.model.db.MealPlan;
 import com.foodie.model.MealSlot;
 import com.foodie.service.MealPlanService;
 import com.foodie.service.MealService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.stereotype.Controller;
@@ -48,70 +50,54 @@ public class MealPlanController {
     }
 
     @PostMapping("/add")
-    public String addEntry(@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate weekStart,
-                           @RequestParam DayOfWeek day,
-                           @RequestParam MealSlot slot,
-                           @RequestParam Long mealId,
-                           @RequestParam(defaultValue = "1") Integer servings,
+    public String addEntry(@Valid @ModelAttribute MealPlanForms.AddEntry form,
                            RedirectAttributes redirectAttributes) {
-        mealPlanService.addEntry(weekStart, day, slot, mealId, servings);
+        mealPlanService.addEntry(form.weekStart(), form.day(), form.slot(), form.mealId(), form.servings());
         redirectAttributes.addFlashAttribute("success", "Meal added to plan!");
-        return "redirect:/meal-plan?week=" + weekStart;
+        return backToWeek(form.weekStart());
     }
 
     @PostMapping("/remove")
-    public String removeEntry(@RequestParam Long planId,
-                              @RequestParam Long entryId,
-                              @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate weekStart,
+    public String removeEntry(@Valid @ModelAttribute MealPlanForms.EntryRef form,
                               RedirectAttributes redirectAttributes) {
-        mealPlanService.removeEntry(planId, entryId);
+        mealPlanService.removeEntry(form.planId(), form.entryId());
         redirectAttributes.addFlashAttribute("success", "Entry removed.");
-        return "redirect:/meal-plan?week=" + weekStart;
+        return backToWeek(form.weekStart());
     }
 
     @PostMapping("/move")
-    public String moveEntry(@RequestParam Long planId,
-                            @RequestParam Long entryId,
-                            @RequestParam DayOfWeek newDay,
-                            @RequestParam MealSlot newSlot,
-                            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate weekStart) {
-        mealPlanService.moveEntry(planId, entryId, newDay, newSlot);
-        return "redirect:/meal-plan?week=" + weekStart;
+    public String moveEntry(@Valid @ModelAttribute MealPlanForms.EntryTarget form) {
+        mealPlanService.moveEntry(form.planId(), form.entryId(), form.newDay(), form.newSlot());
+        return backToWeek(form.weekStart());
     }
 
     @PostMapping("/update-servings")
-    public String updateServings(@RequestParam Long planId,
-                                 @RequestParam Long entryId,
-                                 @RequestParam Integer servings,
-                                 @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate weekStart) {
-        mealPlanService.updateEntryServings(planId, entryId, servings);
-        return "redirect:/meal-plan?week=" + weekStart;
+    public String updateServings(@Valid @ModelAttribute MealPlanForms.EntryServings form) {
+        mealPlanService.updateEntryServings(form.planId(), form.entryId(), form.servings());
+        return backToWeek(form.weekStart());
     }
 
     @PostMapping("/copy")
-    public String copyEntry(@RequestParam Long planId,
-                            @RequestParam Long entryId,
-                            @RequestParam DayOfWeek newDay,
-                            @RequestParam MealSlot newSlot,
-                            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate weekStart) {
-        mealPlanService.copyEntry(planId, entryId, newDay, newSlot);
-        return "redirect:/meal-plan?week=" + weekStart;
+    public String copyEntry(@Valid @ModelAttribute MealPlanForms.EntryTarget form) {
+        mealPlanService.copyEntry(form.planId(), form.entryId(), form.newDay(), form.newSlot());
+        return backToWeek(form.weekStart());
     }
 
     @PostMapping("/toggle-freeze")
-    public String toggleFreeze(@RequestParam Long planId,
-                               @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate weekStart,
+    public String toggleFreeze(@Valid @ModelAttribute MealPlanForms.PlanRef form,
                                RedirectAttributes redirectAttributes) {
-        mealPlanService.toggleFreeze(planId);
+        mealPlanService.toggleFreeze(form.planId());
         redirectAttributes.addFlashAttribute("success", "Plan status updated.");
-        return "redirect:/meal-plan?week=" + weekStart;
+        return backToWeek(form.weekStart());
     }
 
     @PostMapping("/toggle-prepared")
-    public String togglePrepared(@RequestParam Long planId,
-                                 @RequestParam Long entryId,
-                                 @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate weekStart) {
-        mealPlanService.togglePrepared(planId, entryId);
+    public String togglePrepared(@Valid @ModelAttribute MealPlanForms.EntryRef form) {
+        mealPlanService.togglePrepared(form.planId(), form.entryId());
+        return backToWeek(form.weekStart());
+    }
+
+    private static String backToWeek(LocalDate weekStart) {
         return "redirect:/meal-plan?week=" + weekStart;
     }
 }

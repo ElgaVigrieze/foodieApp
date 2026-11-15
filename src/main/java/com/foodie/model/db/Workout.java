@@ -1,5 +1,6 @@
 package com.foodie.model.db;
 
+import com.foodie.model.OwnedEntity;
 import com.foodie.model.WorkoutType;
 import jakarta.persistence.*;
 import lombok.*;
@@ -12,7 +13,7 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Workout {
+public class Workout implements OwnedEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -43,4 +44,10 @@ public class Workout {
 
     @Column(columnDefinition = "TEXT")
     private String setsJson;
+
+    /** Fitness data belongs to one user, not to a household. */
+    @Override
+    public Household getHousehold() {
+        return null;
+    }
 }

@@ -4,6 +4,8 @@ import com.foodie.model.MealCategory;
 import com.foodie.service.MealService;
 import com.foodie.service.ProductService;
 import com.foodie.service.CurrentUserService;
+import com.foodie.controller.form.MealForm;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -67,24 +69,18 @@ public class MealController {
     }
 
     @PostMapping("/save")
-    public String save(@RequestParam String name,
-                       @RequestParam MealCategory category,
-                       @RequestParam int servings,
-                       @RequestParam(required = false) String recipe,
-                       @RequestParam(required = false) String recipeUrl,
-                       @RequestParam(required = false) Long id,
-                       @RequestParam(name = "productIds", required = false) List<Long> productIds,
-                       @RequestParam(name = "quantities", required = false) List<BigDecimal> quantities,
-                       RedirectAttributes redirectAttributes) {
-        if (productIds == null || quantities == null || productIds.isEmpty()) {
+    public String save(@Valid @ModelAttribute MealForm form, RedirectAttributes redirectAttributes) {
+        if (!form.hasIngredients()) {
             redirectAttributes.addFlashAttribute("error", "Please add at least one ingredient.");
-            return id == null ? "redirect:/meals/new" : "redirect:/meals/" + id + "/edit";
+            return form.id() == null ? "redirect:/meals/new" : "redirect:/meals/" + form.id() + "/edit";
         }
 
-        if (id == null) {
-            mealService.createMeal(name, category, servings, recipe, recipeUrl, productIds, quantities);
+        if (form.id() == null) {
+            mealService.createMeal(form.name(), form.category(), form.servings(), form.recipe(), form.recipeUrl(),
+                    form.productIds(), form.quantities());
         } else {
-            mealService.updateMeal(id, name, category, servings, recipe, recipeUrl, productIds, quantities);
+            mealService.updateMeal(form.id(), form.name(), form.category(), form.servings(), form.recipe(),
+                    form.recipeUrl(), form.productIds(), form.quantities());
         }
 
         redirectAttributes.addFlashAttribute("success", "Meal saved successfully!");

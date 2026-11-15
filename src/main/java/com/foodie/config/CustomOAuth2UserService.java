@@ -7,7 +7,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserService;
 import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserRequest;
+import org.springframework.dao.DataAccessException;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
+import org.springframework.security.oauth2.core.OAuth2Error;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.stereotype.Service;
 
@@ -47,8 +49,11 @@ public class CustomOAuth2UserService extends OidcUserService {
                         log.info("Created new user: {}", email);
                     }
             );
-        } catch (Exception e) {
+        } catch (DataAccessException e) {
+            // Refuse the login: continuing would leave a session with no AppUser behind it.
             log.error("Failed to save/update user {}: {}", email, e.getMessage(), e);
+            throw new OAuth2AuthenticationException(
+                    new OAuth2Error("user_save_failed", "Could not complete login. Please try again.", null), e);
         }
 
         return oAuth2User;

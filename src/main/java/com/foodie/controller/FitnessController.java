@@ -8,6 +8,8 @@ import com.foodie.service.CurrentUserService;
 import com.foodie.service.FitnessService;
 import com.foodie.util.CalendarUtils;
 import com.foodie.util.WorkoutJsonBuilder;
+import com.foodie.controller.form.FitnessForms;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.stereotype.Controller;
@@ -53,11 +55,9 @@ public class FitnessController {
     }
 
     @PostMapping("/plan/assign")
-    public String assignPlan(@RequestParam Long workoutId,
-                             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
-                             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate weekStart) {
-        fitnessService.assignWorkout(workoutId, date);
-        return "redirect:/fitness/plan?week=" + weekStart;
+    public String assignPlan(@Valid @ModelAttribute FitnessForms.AssignWorkout form) {
+        fitnessService.assignWorkout(form.workoutId(), form.date());
+        return "redirect:/fitness/plan?week=" + form.weekStart();
     }
 
     @PostMapping("/plan/remove/{entryId}")

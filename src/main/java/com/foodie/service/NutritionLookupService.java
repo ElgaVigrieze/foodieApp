@@ -6,6 +6,7 @@ import com.foodie.client.OpenFoodFactsClient.Nutriments;
 import com.foodie.client.OpenFoodFactsClient.SearchResponse;
 import com.foodie.controller.dto.NutritionBarcodeResult;
 import com.foodie.controller.dto.NutritionInfo;
+import com.foodie.exception.ExternalServiceException;
 import com.foodie.model.db.Product;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -76,7 +77,15 @@ public class NutritionLookupService {
             return;
         }
 
-        lookup(product.getName()).ifPresent(info -> {
+        Optional<NutritionInfo> found;
+        try {
+            found = lookup(product.getName());
+        } catch (ExternalServiceException e) {
+            // Best-effort enrichment: saving the product must not depend on Open Food Facts being up.
+            log.warn("Skipping nutrition auto-fill for '{}': {}", product.getName(), e.getMessage());
+            return;
+        }
+        found.ifPresent(info -> {
             if (product.getCalories() == null) product.setCalories(info.calories());
             if (product.getProtein() == null) product.setProtein(info.protein());
             if (product.getCarbs() == null) product.setCarbs(info.carbs());

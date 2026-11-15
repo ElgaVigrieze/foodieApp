@@ -10,13 +10,28 @@ spring:
     console:
       enabled: ${H2_CONSOLE_ENABLED:false}
       path: /h2-console
+  jackson:
+    deserialization:
+      # The browser sends "" for an empty slot dropdown; treat it as "not set".
+      accept-empty-string-as-null-object: true
   jpa:
     database-platform: ${JPA_DIALECT:org.hibernate.dialect.H2Dialect}
     hibernate:
-      ddl-auto: update
+      # Local H2 development: Hibernate creates/updates the schema.
+      # PostgreSQL (production): set DDL_AUTO=validate together with FLYWAY_ENABLED=true so that
+      # Flyway owns the schema and Hibernate only checks that the entities match it. The app refuses
+      # to start on PostgreSQL otherwise (see SchemaManagementGuard).
+      ddl-auto: ${DDL_AUTO:update}
     show-sql: false
     open-in-view: false
-    defer-datasource-initialization: true
+  flyway:
+    # Off by default so local H2 development keeps working (the migrations are PostgreSQL SQL).
+    enabled: ${FLYWAY_ENABLED:false}
+    locations: classpath:db/migration
+    # An existing production database (created by ddl-auto=update) has tables but no history table:
+    # Flyway marks it as already being at version 1 and only applies newer migrations.
+    baseline-on-migrate: true
+    baseline-version: 1
   sql:
     init:
       mode: never

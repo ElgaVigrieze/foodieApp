@@ -1,5 +1,6 @@
 package com.foodie.model.db;
 
+import com.foodie.model.OwnedEntity;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -12,7 +13,7 @@ import java.time.LocalDate;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class TrainingPlanEntry {
+public class TrainingPlanEntry implements OwnedEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -31,4 +32,10 @@ public class TrainingPlanEntry {
 
     @Builder.Default
     private boolean completed = false;
+
+    /** Fitness data belongs to one user, not to a household. */
+    @Override
+    public Household getHousehold() {
+        return null;
+    }
 }

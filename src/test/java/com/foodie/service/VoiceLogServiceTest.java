@@ -10,6 +10,10 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -24,12 +28,12 @@ import static org.mockito.Mockito.*;
 
 /**
  * Tests for {@link VoiceLogService}.
- * 
+ *
  * Tests the voice input parsing logic including:
  * - Meal slot detection (breakfast, lunch, dinner, snack)
  * - Quantity extraction from natural language
  * - Fuzzy matching of meals and products by name
- * 
+ *
  * These tests ensure the voice logging feature continues to work correctly
  * as the codebase evolves.
  */
@@ -54,7 +58,6 @@ class VoiceLogServiceTest {
 
     @BeforeEach
     void setUp() {
-        // Set up sample meals for fuzzy matching tests
         sampleMeals = List.of(
             createMeal(1L, "Spaghetti Carbonara"),
             createMeal(2L, "Chicken Stir Fry"),
@@ -65,7 +68,6 @@ class VoiceLogServiceTest {
             createMeal(7L, "Grilled Salmon with Rice")
         );
 
-        // Set up sample products
         sampleProducts = List.of(
             createProduct(1L, "Chicken Breast"),
             createProduct(2L, "Olive Oil"),
@@ -92,321 +94,108 @@ class VoiceLogServiceTest {
         return product;
     }
 
+    private VoiceParseResult parse(List<Meal> meals, List<Product> products, String text) {
+        when(mealService.findAll()).thenReturn(meals);
+        when(productService.findAll()).thenReturn(products);
+        return voiceLogService.parse(text);
+    }
+
+    private static void assertDecimal(String expected, BigDecimal actual) {
+        assertNotNull(actual);
+        assertEquals(0, new BigDecimal(expected).compareTo(actual), "expected " + expected + " but was " + actual);
+    }
+
     @Nested
     @DisplayName("Meal Slot Detection")
     class MealSlotDetection {
 
-        @Test
-        @DisplayName("Should detect BREAKFAST from 'breakfast' keyword")
-        void shouldDetectBreakfast() {
-            when(mealService.findAll()).thenReturn(sampleMeals);
-            when(productService.findAll()).thenReturn(List.of());
-
-            VoiceParseResult result = voiceLogService.parse("2 servings of banana smoothie for breakfast");
-
-            assertEquals(MealSlot.BREAKFAST, result.slot());
-        }
-
-        @Test
-        @DisplayName("Should detect BREAKFAST from 'morning' keyword")
-        void shouldDetectBreakfastFromMorning() {
-            when(mealService.findAll()).thenReturn(sampleMeals);
-            when(productService.findAll()).thenReturn(List.of());
-
-            VoiceParseResult result = voiceLogService.parse("banana smoothie this morning");
-
-            assertEquals(MealSlot.BREAKFAST, result.slot());
-        }
-
-        @Test
-        @DisplayName("Should detect LUNCH from 'lunch' keyword")
-        void shouldDetectLunch() {
-            when(mealService.findAll()).thenReturn(sampleMeals);
-            when(productService.findAll()).thenReturn(List.of());
-
-            VoiceParseResult result = voiceLogService.parse("chicken stir fry for lunch");
-
-            assertEquals(MealSlot.LUNCH, result.slot());
-        }
-
-        @Test
-        @DisplayName("Should detect LUNCH from 'midday' keyword")
-        void shouldDetectLunchFromMidday() {
-            when(mealService.findAll()).thenReturn(sampleMeals);
-            when(productService.findAll()).thenReturn(List.of());
-
-            VoiceParseResult result = voiceLogService.parse("greek salad at midday");
-
-            assertEquals(MealSlot.LUNCH, result.slot());
-        }
-
-        @Test
-        @DisplayName("Should detect DINNER from 'dinner' keyword")
-        void shouldDetectDinner() {
-            when(mealService.findAll()).thenReturn(sampleMeals);
-            when(productService.findAll()).thenReturn(List.of());
-
-            VoiceParseResult result = voiceLogService.parse("spaghetti carbonara for dinner");
-
-            assertEquals(MealSlot.DINNER, result.slot());
-        }
-
-        @Test
-        @DisplayName("Should detect DINNER from 'evening' keyword")
-        void shouldDetectDinnerFromEvening() {
-            when(mealService.findAll()).thenReturn(sampleMeals);
-            when(productService.findAll()).thenReturn(List.of());
-
-            VoiceParseResult result = voiceLogService.parse("grilled salmon this evening");
-
-            assertEquals(MealSlot.DINNER, result.slot());
-        }
-
-        @Test
-        @DisplayName("Should detect SNACK from 'snack' keyword")
-        void shouldDetectSnack() {
-            when(mealService.findAll()).thenReturn(sampleMeals);
-            when(productService.findAll()).thenReturn(List.of());
-
-            VoiceParseResult result = voiceLogService.parse("chocolate brownies as a snack");
-
-            assertEquals(MealSlot.SNACK, result.slot());
-        }
-
-        @Test
-        @DisplayName("Should return null slot when no meal time mentioned")
-        void shouldReturnNullSlotWhenNotMentioned() {
-            when(mealService.findAll()).thenReturn(sampleMeals);
-            when(productService.findAll()).thenReturn(List.of());
-
-            VoiceParseResult result = voiceLogService.parse("greek salad");
-
-            assertNull(result.slot());
+        @ParameterizedTest(name = "\"{0}\" -> {1}")
+        @CsvSource(delimiter = '|', value = {
+            "2 servings of banana smoothie for breakfast | BREAKFAST",
+            "banana smoothie this morning               | BREAKFAST",
+            "chicken stir fry for lunch                 | LUNCH",
+            "greek salad at midday                      | LUNCH",
+            "spaghetti carbonara for dinner             | DINNER",
+            "grilled salmon this evening                | DINNER",
+            "chocolate brownies as a snack              | SNACK",
+            "greek salad                                |"          // no meal time -> null slot
+        })
+        void detectsSlot(String text, MealSlot expected) {
+            assertEquals(expected, parse(sampleMeals, List.of(), text).slot());
         }
     }
 
     @Nested
-    @DisplayName("Quantity Detection")
-    class QuantityDetection {
+    @DisplayName("Meal matching and servings")
+    class MealMatching {
 
-        @Test
-        @DisplayName("Should detect integer servings")
-        void shouldDetectIntegerServings() {
-            when(mealService.findAll()).thenReturn(sampleMeals);
-            when(productService.findAll()).thenReturn(List.of());
-
-            VoiceParseResult result = voiceLogService.parse("2 servings of spaghetti carbonara");
-
-            assertTrue(result.parsed());
-            assertEquals(0, new BigDecimal("2").compareTo(result.servings()));
-        }
-
-        @Test
-        @DisplayName("Should detect decimal servings")
-        void shouldDetectDecimalServings() {
-            when(mealService.findAll()).thenReturn(sampleMeals);
-            when(productService.findAll()).thenReturn(List.of());
-
-            // Use whole number since special chars get stripped early
-            VoiceParseResult result = voiceLogService.parse("2 servings vegetable soup");
-
-            assertTrue(result.parsed());
-            assertEquals(0, new BigDecimal("2").compareTo(result.servings()));
-        }
-
-        @Test
-        @DisplayName("Should detect quantity with 'srv' abbreviation")
-        void shouldDetectSrvAbbreviation() {
-            when(mealService.findAll()).thenReturn(sampleMeals);
-            when(productService.findAll()).thenReturn(List.of());
-
-            VoiceParseResult result = voiceLogService.parse("2 srv chicken stir fry");
-
-            assertEquals(0, new BigDecimal("2").compareTo(result.servings()));
-        }
-
-        @Test
-        @DisplayName("Should detect grams and convert to kg")
-        void shouldDetectGramsAndConvert() {
-            when(mealService.findAll()).thenReturn(List.of());
-            when(productService.findAll()).thenReturn(sampleProducts);
-
-            VoiceParseResult result = voiceLogService.parse("200 grams chicken breast");
-
-            assertTrue(result.parsed());
-            assertEquals("product", result.type());
-            // 200g = 0.2kg
-            assertEquals(0, new BigDecimal("0.2").compareTo(result.quantity()));
-        }
-
-        @Test
-        @DisplayName("Should detect kg and keep as-is")
-        void shouldDetectKgAsIs() {
-            when(mealService.findAll()).thenReturn(List.of());
-            when(productService.findAll()).thenReturn(sampleProducts);
-
-            // Use integer quantity - decimals with dots get stripped
-            VoiceParseResult result = voiceLogService.parse("1 kg brown rice");
-
-            assertTrue(result.parsed());
-            assertEquals(0, new BigDecimal("1").compareTo(result.quantity()));
-        }
-
-        @Test
-        @DisplayName("Should default to 1 serving for meals when no quantity")
-        void shouldDefaultToOneServingForMeals() {
-            when(mealService.findAll()).thenReturn(sampleMeals);
-            when(productService.findAll()).thenReturn(List.of());
-
-            VoiceParseResult result = voiceLogService.parse("greek salad");
+        @ParameterizedTest(name = "\"{0}\" -> {1} x{3}")
+        @CsvSource(delimiter = '|', value = {
+            "spaghetti carbonara                              | Spaghetti Carbonara | 1 | 1 |",           // exact, default 1 serving
+            "chicken stir                                     | Chicken Stir Fry    | 2 | 1 |",           // partial / word overlap
+            "GREEK SALAD                                      | Greek Salad         | 3 | 1 |",           // case-insensitive
+            "spaghetti!! carbonara???                         | Spaghetti Carbonara | 1 | 1 |",           // special chars stripped
+            "2 servings of spaghetti carbonara                | Spaghetti Carbonara | 1 | 2 |",           // integer servings
+            "2 srv chicken stir fry                           | Chicken Stir Fry    | 2 | 2 |",           // 'srv' abbreviation
+            "I had 2 servings of chicken stir fry for dinner  | Chicken Stir Fry    | 2 | 2 | DINNER",
+            "1 portions of vegetable soup for lunch           | Vegetable Soup      | 4 | 1 | LUNCH"
+        })
+        void matchesMeal(String text, String mealName, Long mealId, String servings, MealSlot slot) {
+            VoiceParseResult result = parse(sampleMeals, List.of(), text);
 
             assertTrue(result.parsed());
             assertEquals("meal", result.type());
-            assertEquals(0, BigDecimal.ONE.compareTo(result.servings()));
-        }
-
-        @Test
-        @DisplayName("Should default to 0.1kg for products when no quantity")
-        void shouldDefaultToDefaultQuantityForProducts() {
-            when(mealService.findAll()).thenReturn(List.of());
-            when(productService.findAll()).thenReturn(sampleProducts);
-
-            VoiceParseResult result = voiceLogService.parse("banana");
-
-            assertTrue(result.parsed());
-            assertEquals("product", result.type());
-            assertEquals(0, new BigDecimal("0.1").compareTo(result.quantity()));
-        }
-    }
-
-    @Nested
-    @DisplayName("Fuzzy Meal Matching")
-    class FuzzyMealMatching {
-
-        @Test
-        @DisplayName("Should match meal by exact name")
-        void shouldMatchByExactName() {
-            when(mealService.findAll()).thenReturn(sampleMeals);
-            when(productService.findAll()).thenReturn(List.of());
-
-            VoiceParseResult result = voiceLogService.parse("spaghetti carbonara");
-
-            assertTrue(result.parsed());
-            assertEquals("meal", result.type());
-            assertEquals("Spaghetti Carbonara", result.mealName());
-            assertEquals(1L, result.mealId());
-        }
-
-        @Test
-        @DisplayName("Should match meal by partial name (word overlap)")
-        void shouldMatchByPartialName() {
-            when(mealService.findAll()).thenReturn(sampleMeals);
-            when(productService.findAll()).thenReturn(List.of());
-
-            VoiceParseResult result = voiceLogService.parse("chicken stir");
-
-            assertTrue(result.parsed());
-            assertEquals("meal", result.type());
-            assertEquals("Chicken Stir Fry", result.mealName());
-        }
-
-        @Test
-        @DisplayName("Should match meal case-insensitively")
-        void shouldMatchCaseInsensitively() {
-            when(mealService.findAll()).thenReturn(sampleMeals);
-            when(productService.findAll()).thenReturn(List.of());
-
-            VoiceParseResult result = voiceLogService.parse("GREEK SALAD");
-
-            assertTrue(result.parsed());
-            assertEquals("Greek Salad", result.mealName());
+            assertEquals(mealName, result.mealName());
+            assertEquals(mealId, result.mealId());
+            assertDecimal(servings, result.servings());
+            assertEquals(slot, result.slot());
         }
 
         @Test
         @DisplayName("Should prefer meal match over product match")
         void shouldPreferMealOverProduct() {
             // "Banana Smoothie" (meal) vs "Banana" (product)
-            when(mealService.findAll()).thenReturn(sampleMeals);
-            when(productService.findAll()).thenReturn(sampleProducts);
-
-            VoiceParseResult result = voiceLogService.parse("banana smoothie");
+            VoiceParseResult result = parse(sampleMeals, sampleProducts, "banana smoothie");
 
             assertTrue(result.parsed());
             assertEquals("meal", result.type());
             assertEquals("Banana Smoothie", result.mealName());
         }
-
-        @Test
-        @DisplayName("Should not match on very short words")
-        void shouldNotMatchOnShortWords() {
-            // Words <= 2 chars should be ignored to avoid false positives
-            when(mealService.findAll()).thenReturn(sampleMeals);
-            when(productService.findAll()).thenReturn(List.of());
-
-            // "to" is too short to trigger a match
-            VoiceParseResult result = voiceLogService.parse("to");
-
-            assertFalse(result.parsed());
-        }
-
-        @Test
-        @DisplayName("Should require minimum score of 4 for meal match")
-        void shouldRequireMinimumScoreForMatch() {
-            when(mealService.findAll()).thenReturn(sampleMeals);
-            when(productService.findAll()).thenReturn(List.of());
-
-            // "xyz" is too short (3 chars = score 3, below threshold of 4)
-            // and doesn't appear as substring in any meal name
-            VoiceParseResult result = voiceLogService.parse("xyz");
-
-            assertFalse(result.parsed());
-        }
     }
 
     @Nested
-    @DisplayName("Fuzzy Product Matching")
-    class FuzzyProductMatching {
+    @DisplayName("Product matching and quantity")
+    class ProductMatching {
+
+        @ParameterizedTest(name = "\"{0}\" -> {1} {3}kg")
+        @CsvSource(delimiter = '|', value = {
+            "olive oil                           | Olive Oil      | 2 | 0.1  |",           // default 0.1 when no quantity
+            "banana                              | Banana         | 5 | 0.1  |",
+            "200g chicken                        | Chicken Breast | 1 | 0.2  |",           // partial name, g -> kg
+            "200 grams chicken breast            | Chicken Breast | 1 | 0.2  |",
+            "1 kg brown rice                     | Brown Rice     | 3 | 1    |",           // kg kept as-is
+            "300 grams greek yogurt for breakfast| Greek Yogurt   | 4 | 0.3  | BREAKFAST",
+            "greek yogurt 150g breakfast         | Greek Yogurt   | 4 | 0.15 | BREAKFAST"
+        })
+        void matchesProduct(String text, String productName, Long productId, String quantity, MealSlot slot) {
+            VoiceParseResult result = parse(List.of(), sampleProducts, text);
+
+            assertTrue(result.parsed());
+            assertEquals("product", result.type());
+            assertEquals(productName, result.productName());
+            assertEquals(productId, result.productId());
+            assertDecimal(quantity, result.quantity());
+            assertEquals(slot, result.slot());
+        }
 
         @Test
-        @DisplayName("Should match product when no meal matches")
+        @DisplayName("Should fall back to a product when no meal matches")
         void shouldMatchProductWhenNoMealMatches() {
-            when(mealService.findAll()).thenReturn(sampleMeals);
-            when(productService.findAll()).thenReturn(sampleProducts);
-
-            VoiceParseResult result = voiceLogService.parse("olive oil");
+            VoiceParseResult result = parse(sampleMeals, sampleProducts, "olive oil");
 
             assertTrue(result.parsed());
             assertEquals("product", result.type());
             assertEquals("Olive Oil", result.productName());
-            assertEquals(2L, result.productId());
-        }
-
-        @Test
-        @DisplayName("Should match product by partial name")
-        void shouldMatchProductByPartialName() {
-            when(mealService.findAll()).thenReturn(List.of());
-            when(productService.findAll()).thenReturn(sampleProducts);
-
-            VoiceParseResult result = voiceLogService.parse("200g chicken");
-
-            assertTrue(result.parsed());
-            assertEquals("product", result.type());
-            assertEquals("Chicken Breast", result.productName());
-        }
-
-        @Test
-        @DisplayName("Should match product with quantity and slot")
-        void shouldMatchProductWithQuantityAndSlot() {
-            when(mealService.findAll()).thenReturn(List.of());
-            when(productService.findAll()).thenReturn(sampleProducts);
-
-            VoiceParseResult result = voiceLogService.parse("300 grams greek yogurt for breakfast");
-
-            assertTrue(result.parsed());
-            assertEquals("product", result.type());
-            assertEquals("Greek Yogurt", result.productName());
-            assertEquals(0, new BigDecimal("0.3").compareTo(result.quantity()));
-            assertEquals(MealSlot.BREAKFAST, result.slot());
         }
     }
 
@@ -414,50 +203,23 @@ class VoiceLogServiceTest {
     @DisplayName("Edge Cases and Error Handling")
     class EdgeCasesAndErrorHandling {
 
-        @Test
-        @DisplayName("Should throw for empty text")
-        void shouldThrowForEmptyText() {
-            var e = assertThrows(IllegalArgumentException.class, () -> voiceLogService.parse(""));
+        @ParameterizedTest(name = "throws for [{0}]")
+        @NullAndEmptySource
+        @ValueSource(strings = "   ")
+        void shouldThrowForBlankText(String text) {
+            var e = assertThrows(IllegalArgumentException.class, () -> voiceLogService.parse(text));
 
             assertEquals("No text provided", e.getMessage());
         }
 
-        @Test
-        @DisplayName("Should throw for whitespace-only text")
-        void shouldThrowForWhitespaceText() {
-            var e = assertThrows(IllegalArgumentException.class, () -> voiceLogService.parse("   "));
-
-            assertEquals("No text provided", e.getMessage());
-        }
-
-        @Test
-        @DisplayName("Should throw for null text")
-        void shouldThrowForNullText() {
-            var e = assertThrows(IllegalArgumentException.class, () -> voiceLogService.parse(null));
-
-            assertEquals("No text provided", e.getMessage());
-        }
-
-        @Test
-        @DisplayName("Should handle special characters in input")
-        void shouldHandleSpecialCharacters() {
-            when(mealService.findAll()).thenReturn(sampleMeals);
-            when(productService.findAll()).thenReturn(List.of());
-
-            // Special characters should be stripped
-            VoiceParseResult result = voiceLogService.parse("spaghetti!! carbonara???");
-
-            assertTrue(result.parsed());
-            assertEquals("Spaghetti Carbonara", result.mealName());
-        }
-
-        @Test
-        @DisplayName("Should return not parsed when no match found")
-        void shouldReturnNotParsedWhenNoMatch() {
-            when(mealService.findAll()).thenReturn(sampleMeals);
-            when(productService.findAll()).thenReturn(sampleProducts);
-
-            VoiceParseResult result = voiceLogService.parse("something completely unknown xyz");
+        @ParameterizedTest(name = "\"{0}\" is not parsed")
+        @ValueSource(strings = {
+            "to",                               // words <= 2 chars are ignored
+            "xyz",                              // score 3, below the threshold of 4
+            "something completely unknown xyz"
+        })
+        void shouldNotParseUnmatchableInput(String text) {
+            VoiceParseResult result = parse(sampleMeals, sampleProducts, text);
 
             assertFalse(result.parsed());
             assertNotNull(result.error());
@@ -466,62 +228,7 @@ class VoiceLogServiceTest {
         @Test
         @DisplayName("Should handle empty meal and product lists")
         void shouldHandleEmptyLists() {
-            when(mealService.findAll()).thenReturn(List.of());
-            when(productService.findAll()).thenReturn(List.of());
-
-            VoiceParseResult result = voiceLogService.parse("chicken stir fry");
-
-            assertFalse(result.parsed());
-        }
-    }
-
-    @Nested
-    @DisplayName("Complex Real-World Inputs")
-    class ComplexRealWorldInputs {
-
-        @Test
-        @DisplayName("Should parse 'I had 2 servings of chicken stir fry for dinner'")
-        void shouldParseComplexSentence1() {
-            when(mealService.findAll()).thenReturn(sampleMeals);
-            when(productService.findAll()).thenReturn(List.of());
-
-            VoiceParseResult result = voiceLogService.parse("I had 2 servings of chicken stir fry for dinner");
-
-            assertTrue(result.parsed());
-            assertEquals("meal", result.type());
-            assertEquals("Chicken Stir Fry", result.mealName());
-            assertEquals(0, new BigDecimal("2").compareTo(result.servings()));
-            assertEquals(MealSlot.DINNER, result.slot());
-        }
-
-        @Test
-        @DisplayName("Should parse 'greek yogurt 150g breakfast'")
-        void shouldParseCompactInput() {
-            when(mealService.findAll()).thenReturn(List.of());
-            when(productService.findAll()).thenReturn(sampleProducts);
-
-            VoiceParseResult result = voiceLogService.parse("greek yogurt 150g breakfast");
-
-            assertTrue(result.parsed());
-            assertEquals("product", result.type());
-            assertEquals("Greek Yogurt", result.productName());
-            assertEquals(0, new BigDecimal("0.15").compareTo(result.quantity()));
-            assertEquals(MealSlot.BREAKFAST, result.slot());
-        }
-
-        @Test
-        @DisplayName("Should parse '1 portions of vegetable soup for lunch'")
-        void shouldParsePortionsKeyword() {
-            when(mealService.findAll()).thenReturn(sampleMeals);
-            when(productService.findAll()).thenReturn(List.of());
-
-            // Use whole number since dots get stripped from input
-            VoiceParseResult result = voiceLogService.parse("1 portions of vegetable soup for lunch");
-
-            assertTrue(result.parsed());
-            assertEquals("Vegetable Soup", result.mealName());
-            assertEquals(0, new BigDecimal("1").compareTo(result.servings()));
-            assertEquals(MealSlot.LUNCH, result.slot());
+            assertFalse(parse(List.of(), List.of(), "chicken stir fry").parsed());
         }
     }
 }

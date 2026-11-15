@@ -1,14 +1,15 @@
 package com.foodie.controller;
 
+import com.foodie.controller.dto.BarcodeLookupRequest;
 import com.foodie.controller.dto.BarcodeLookupResult;
 import com.foodie.controller.dto.BarcodeSaveRequest;
 import com.foodie.model.db.Product;
 import com.foodie.service.BarcodeService;
 import com.foodie.service.ProductService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
-import java.math.BigDecimal;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -24,29 +25,16 @@ public class BarcodeController {
      * Lookup a barcode: first check local products, then Open Food Facts.
      */
     @PostMapping("/lookup")
-    public Map<String, Object> lookup(@RequestBody Map<String, String> body) {
-        String barcode = body.getOrDefault("barcode", "").trim();
-        BarcodeLookupResult result = barcodeService.lookup(barcode);
-        return toResponseMap(result);
+    public Map<String, Object> lookup(@Valid @RequestBody BarcodeLookupRequest request) {
+        return toResponseMap(barcodeService.lookup(request.barcode()));
     }
 
     /**
      * Save a barcode product locally (creates a new Product in the household).
      */
     @PostMapping("/save-product")
-    public Map<String, Object> saveProduct(@RequestBody Map<String, Object> body) {
+    public Map<String, Object> saveProduct(@Valid @RequestBody BarcodeSaveRequest request) {
         // Failures are translated to HTTP errors by ApiExceptionHandler
-        BarcodeSaveRequest request = new BarcodeSaveRequest(
-                (String) body.get("barcode"),
-                (String) body.get("name"),
-                toBigDecimal(body.get("calories")),
-                toBigDecimal(body.get("protein")),
-                toBigDecimal(body.get("carbs")),
-                toBigDecimal(body.get("fat")),
-                toBigDecimal(body.get("fiber")),
-                toBigDecimal(body.get("sugar"))
-        );
-
         Product product = productService.saveFromBarcode(request);
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("success", true);
@@ -79,10 +67,5 @@ public class BarcodeController {
         if (result.unit() != null) map.put("unit", result.unit());
 
         return map;
-    }
-
-    private BigDecimal toBigDecimal(Object val) {
-        if (val == null) return null;
-        return new BigDecimal(val.toString());
     }
 }

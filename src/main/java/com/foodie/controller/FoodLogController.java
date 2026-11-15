@@ -8,6 +8,8 @@ import com.foodie.service.FoodLogService;
 import com.foodie.service.MealService;
 import com.foodie.service.ProductService;
 import com.foodie.util.CalendarUtils;
+import com.foodie.controller.form.FoodLogForms;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.stereotype.Controller;
@@ -53,50 +55,35 @@ public class FoodLogController {
     }
 
     @PostMapping("/add")
-    public String addEntry(@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
-                           @RequestParam Long mealId,
-                           @RequestParam BigDecimal servingsConsumed,
-                           @RequestParam(required = false) MealSlot slot,
-                           RedirectAttributes ra) {
-        foodLogService.addEntry(date, mealId, servingsConsumed, slot);
+    public String addEntry(@Valid @ModelAttribute FoodLogForms.AddMeal form, RedirectAttributes ra) {
+        foodLogService.addEntry(form.date(), form.mealId(), form.servingsConsumed(), form.slot());
         ra.addFlashAttribute("success", "Entry added!");
-        return "redirect:/log?date=" + date;
+        return backToDay(form.date());
     }
 
     @PostMapping("/add-product")
-    public String addProductEntry(@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
-                                  @RequestParam Long productId,
-                                  @RequestParam BigDecimal quantity,
-                                  @RequestParam(required = false) MealSlot slot,
-                                  RedirectAttributes ra) {
-        foodLogService.addProductEntry(date, productId, quantity, slot);
+    public String addProductEntry(@Valid @ModelAttribute FoodLogForms.AddProduct form, RedirectAttributes ra) {
+        foodLogService.addProductEntry(form.date(), form.productId(), form.quantity(), form.slot());
         ra.addFlashAttribute("success", "Product logged!");
-        return "redirect:/log?date=" + date;
+        return backToDay(form.date());
     }
 
     @PostMapping("/update-calories-spent")
-    public String updateCaloriesSpent(@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
-                                      @RequestParam BigDecimal caloriesSpent) {
-        foodLogService.updateCaloriesSpent(date, caloriesSpent);
-        return "redirect:/log?date=" + date;
+    public String updateCaloriesSpent(@Valid @ModelAttribute FoodLogForms.CaloriesSpent form) {
+        foodLogService.updateCaloriesSpent(form.date(), form.caloriesSpent());
+        return backToDay(form.date());
     }
 
-    
-    
     @PostMapping("/{id}/update-quantity")
-    public String updateQuantity(@PathVariable Long id,
-                                 @RequestParam BigDecimal quantity,
-                                 @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
-        foodLogService.updateProductQuantity(id, quantity);
-        return "redirect:/log?date=" + date;
+    public String updateQuantity(@PathVariable Long id, @Valid @ModelAttribute FoodLogForms.UpdateQuantity form) {
+        foodLogService.updateProductQuantity(id, form.quantity());
+        return backToDay(form.date());
     }
 
     @PostMapping("/{id}/update-servings")
-    public String updateServings(@PathVariable Long id,
-                                 @RequestParam BigDecimal servings,
-                                 @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
-        foodLogService.updateServings(id, servings);
-        return "redirect:/log?date=" + date;
+    public String updateServings(@PathVariable Long id, @Valid @ModelAttribute FoodLogForms.UpdateServings form) {
+        foodLogService.updateServings(id, form.servings());
+        return backToDay(form.date());
     }
 
     @PostMapping("/{id}/delete")
@@ -105,6 +92,10 @@ public class FoodLogController {
                               RedirectAttributes ra) {
         foodLogService.deleteEntry(id);
         ra.addFlashAttribute("success", "Entry deleted.");
+        return backToDay(date);
+    }
+
+    private static String backToDay(LocalDate date) {
         return "redirect:/log?date=" + date;
     }
 
@@ -118,15 +109,9 @@ public class FoodLogController {
     }
 
     @PostMapping("/targets")
-    public String saveTargets(
-            @RequestParam(required = false) BigDecimal targetCalories,
-            @RequestParam(required = false) BigDecimal targetFiber,
-            @RequestParam(required = false) BigDecimal targetCarbs,
-            @RequestParam(required = false) BigDecimal targetFat,
-            @RequestParam(required = false) BigDecimal targetProtein,
-            @RequestParam(required = false) BigDecimal targetCost,
-            RedirectAttributes ra) {
-        currentUserService.saveTargets(targetCalories, targetFiber, targetCarbs, targetFat, targetProtein, targetCost);
+    public String saveTargets(@Valid @ModelAttribute FoodLogForms.Targets form, RedirectAttributes ra) {
+        currentUserService.saveTargets(form.targetCalories(), form.targetFiber(), form.targetCarbs(),
+                form.targetFat(), form.targetProtein(), form.targetCost());
         ra.addFlashAttribute("success", "Targets saved!");
         return "redirect:/log/targets";
     }

@@ -1,6 +1,9 @@
 package com.foodie.controller;
 
 import com.foodie.controller.dto.BrainMonthSummary;
+import com.foodie.exception.BadRequestException;
+import com.foodie.exception.ConflictException;
+import com.foodie.exception.NotFoundException;
 import com.foodie.model.BrainTestType;
 import com.foodie.service.BrainService;
 import lombok.RequiredArgsConstructor;
@@ -18,7 +21,6 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.Locale;
-import java.util.NoSuchElementException;
 
 @Controller
 @RequestMapping("/brain")
@@ -77,7 +79,7 @@ public class BrainController {
             brainService.addManual(resultDate, parseTestType(testType),
                     reactionMs, processingAvgMs, processingAccuracy);
             ra.addFlashAttribute("success", "Result saved.");
-        } catch (IllegalArgumentException | IllegalStateException e) {
+        } catch (BadRequestException | ConflictException e) {
             ra.addFlashAttribute("error", e.getMessage());
         }
         return "redirect:/brain?month=" + YearMonth.from(resultDate);
@@ -90,7 +92,7 @@ public class BrainController {
         try {
             brainService.delete(id);
             ra.addFlashAttribute("success", "Result deleted.");
-        } catch (NoSuchElementException | IllegalStateException e) {
+        } catch (NotFoundException | ConflictException e) {
             ra.addFlashAttribute("error", e.getMessage());
         }
         return "redirect:/brain" + (month == null || month.isBlank() ? "" : "?month=" + month);

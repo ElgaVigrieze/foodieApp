@@ -2,12 +2,15 @@ package com.foodie.client;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.foodie.exception.ExternalServiceException;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientException;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -45,7 +48,8 @@ public class OpenFoodFactsClient {
      * Search for products by name.
      *
      * @param productName the product name to search for
-     * @return search response with matching products, or empty if not found or error
+     * @return search response with matching products, or empty if there are none
+     * @throws ExternalServiceException if Open Food Facts cannot be reached or returns an error
      */
     public Optional<SearchResponse> searchByName(String productName) {
         try {
@@ -61,9 +65,11 @@ public class OpenFoodFactsClient {
 
             return Optional.of(response);
 
-        } catch (Exception e) {
-            log.warn("Failed to search for '{}': {}", productName, e.getMessage());
+        } catch (HttpClientErrorException.NotFound e) {
+            log.info("No results found for: {}", productName);
             return Optional.empty();
+        } catch (RestClientException e) {
+            throw new ExternalServiceException("Open Food Facts is unavailable right now. Please try again later.", e);
         }
     }
 
@@ -71,7 +77,8 @@ public class OpenFoodFactsClient {
      * Lookup a product by barcode.
      *
      * @param barcode the product barcode (EAN/UPC)
-     * @return barcode response with product details, or empty if not found or error
+     * @return barcode response with product details, or empty if the barcode is unknown
+     * @throws ExternalServiceException if Open Food Facts cannot be reached or returns an error
      */
     public Optional<BarcodeResponse> getByBarcode(String barcode) {
         try {
@@ -90,9 +97,11 @@ public class OpenFoodFactsClient {
             log.info("Found barcode {}: {} ({} kcal/100g)", barcode, response.getName(), response.getCalories());
             return Optional.of(response);
 
-        } catch (Exception e) {
-            log.warn("Failed to lookup barcode '{}': {}", barcode, e.getMessage());
+        } catch (HttpClientErrorException.NotFound e) {
+            log.info("Barcode not found on Open Food Facts: {}", barcode);
             return Optional.empty();
+        } catch (RestClientException e) {
+            throw new ExternalServiceException("Open Food Facts is unavailable right now. Please try again later.", e);
         }
     }
 

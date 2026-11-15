@@ -1,9 +1,10 @@
 package com.foodie.controller;
 
+import com.foodie.exception.BadRequestException;
 import com.foodie.controller.dto.PhotoEntryRequest;
-import com.foodie.model.MealSlot;
 import com.foodie.service.FoodLogService;
 import com.foodie.service.PhotoNutritionService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
@@ -12,8 +13,6 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -36,7 +35,7 @@ public class PhotoLogController {
         }
 
         if (image.isEmpty()) {
-            throw new IllegalArgumentException("No image provided");
+            throw new BadRequestException("No image provided");
         }
 
         byte[] bytes;
@@ -65,26 +64,8 @@ public class PhotoLogController {
     }
 
     @PostMapping("/save")
-    public Map<String, Object> save(@RequestBody Map<String, Object> body) {
-        String slotStr = (String) body.get("slot");
-
-        PhotoEntryRequest request = new PhotoEntryRequest(
-                LocalDate.parse((String) body.get("date")),
-                (String) body.get("description"),
-                toBigDecimal(body.get("calories")),
-                toBigDecimal(body.get("protein")),
-                toBigDecimal(body.get("carbs")),
-                toBigDecimal(body.get("fat")),
-                toBigDecimal(body.get("fiber")),
-                slotStr != null && !slotStr.isEmpty() ? MealSlot.valueOf(slotStr) : null
-        );
-
+    public Map<String, Object> save(@Valid @RequestBody PhotoEntryRequest request) {
         foodLogService.addPhotoEntry(request);
         return Map.of("success", true);
-    }
-
-    private BigDecimal toBigDecimal(Object val) {
-        if (val == null) return null;
-        return new BigDecimal(val.toString());
     }
 }

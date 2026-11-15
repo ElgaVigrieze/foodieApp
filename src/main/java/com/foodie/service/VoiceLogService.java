@@ -1,5 +1,6 @@
 package com.foodie.service;
 
+import com.foodie.exception.BadRequestException;
 import com.foodie.controller.dto.VoiceParseResult;
 import com.foodie.controller.dto.VoiceSubmitRequest;
 import com.foodie.model.db.Meal;
@@ -43,7 +44,7 @@ public class VoiceLogService {
         String normalized = normalizeText(text);
 
         if (normalized.isEmpty()) {
-            throw new IllegalArgumentException("No text provided");
+            throw new BadRequestException("No text provided");
         }
 
         MealSlot slot = detectSlot(normalized);
@@ -91,7 +92,7 @@ public class VoiceLogService {
         } else if ("product".equals(request.type())) {
             foodLogService.addProductEntry(request.date(), request.productId(), request.quantity(), request.slot());
         } else {
-            throw new IllegalArgumentException("Unknown type: " + request.type());
+            throw new BadRequestException("Unknown type: " + request.type());
         }
     }
 

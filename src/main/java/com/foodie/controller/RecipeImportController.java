@@ -2,6 +2,11 @@ package com.foodie.controller;
 
 import com.foodie.controller.dto.MatchedIngredient;
 import com.foodie.controller.dto.ProductResolutionRequest;
+import com.foodie.exception.BadRequestException;
+import com.foodie.exception.ConflictException;
+import com.foodie.exception.ExternalServiceException;
+import com.foodie.exception.NotFoundException;
+import com.foodie.exception.UnsafeUrlException;
 import com.foodie.model.MealCategory;
 import com.foodie.model.RecipeExtract;
 import com.foodie.service.*;
@@ -13,6 +18,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.List;
 
@@ -62,12 +68,13 @@ public class RecipeImportController {
             populatePreviewModel(model, extract, matched, recipeUrl.trim());
             return "meals/import-preview";
 
-        } catch (Exception e) {
-            log.error("Recipe URL import failed for {}: {}", recipeUrl, e.getMessage(), e);
-            redirectAttributes.addFlashAttribute("error",
-                    "Could not extract recipe from that URL. Try pasting the recipe text manually, or upload a screenshot.");
+        } catch (UnsafeUrlException | BadRequestException | ExternalServiceException e) {
+            // Expected failures with a user-readable message (blocked URL, AI service down, ...).
+            log.warn("Recipe URL import failed for {}: {}", sanitize(recipeUrl), e.getMessage());
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
             return "redirect:/meals/import";
         }
+        // Anything else is a bug: WebExceptionHandler logs it and sends the user back here.
     }
 
     // ── Step 1b: import from photo ─────────────────────────────────────────
@@ -97,10 +104,14 @@ public class RecipeImportController {
             populatePreviewModel(model, extract, matched, null);
             return "meals/import-preview";
 
-        } catch (Exception e) {
-            log.error("Recipe photo import failed: {}", e.getMessage(), e);
+        } catch (IOException e) {
+            log.warn("Could not read uploaded recipe photo: {}", e.getMessage(), e);
             redirectAttributes.addFlashAttribute("error",
-                    "Could not extract recipe from the photo. Make sure the image contains a clear recipe.");
+                    "Could not read the uploaded image. Please try again.");
+            return "redirect:/meals/import";
+        } catch (BadRequestException | ExternalServiceException e) {
+            log.warn("Recipe photo import failed: {}", e.getMessage());
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
             return "redirect:/meals/import";
         }
     }
@@ -140,12 +151,23 @@ public class RecipeImportController {
                     "Recipe imported! \"" + mealName.trim() + "\" has been saved.");
             return "redirect:/meals";
 
-        } catch (Exception e) {
+        } catch (BadRequestException | ConflictException | NotFoundException e) {
+            log.warn("Recipe import confirm rejected: {}", e.getMessage());
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+            return "redirect:/meals/import";
+        } catch (RuntimeException e) {
+            // The form was posted from the preview page, which cannot be reloaded with GET, so the
+            // generic handler's "back to the referer" would not work: redirect explicitly.
             log.error("Recipe import confirm failed: {}", e.getMessage(), e);
             redirectAttributes.addFlashAttribute("error",
                     "Failed to save the recipe. Please check the details and try again.");
             return "redirect:/meals/import";
         }
+    }
+
+    /** Strips line breaks from user-supplied text before it is logged. */
+    private static String sanitize(String value) {
+        return value == null ? null : value.replaceAll("[\\r\\n]", " ");
     }
 
     // ── Helpers ────────────────────────────────────────────────────────────
