@@ -10,6 +10,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import java.time.DateTimeException;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.YearMonth;
@@ -31,49 +32,55 @@ public class BrainController {
 
     private final BrainService brainService;
 
+    /** Cookie set by the Brain page so the server uses the user's timezone, not its own. */
+    static final String TZ_COOKIE = "brainTz";
+
     @GetMapping
-    public String index(@RequestParam(required = false) String month, Model model) {
-        YearMonth selected = parseMonth(month);
+    public String index(@RequestParam(required = false) String month,
+                        @CookieValue(value = TZ_COOKIE, required = false) String tzCookie,
+                        Model model) {
+        ZoneId zone = parseZone(tzCookie);
+        YearMonth selected = parseMonth(month, zone);
 
         BrainMonthSummary summary = brainService.getMonth(selected);
-        String token = brainService.getOrCreateToken();
-        Instant lastSync = brainService.getLastSyncAt();
-        Instant lastSeen = brainService.getLastSeenAt();
-        String lastSeenPage = brainService.getLastSeenPage();
-        String lastSeenAgent = brainService.getLastSeenAgent();
+        BrainService.RecorderStatus status = brainService.getRecorderStatus();
+        Instant lastSync = status.lastSyncAt();
+        Instant lastSeen = status.lastSeenAt();
 
         model.addAttribute("summary", summary);
-        model.addAttribute("token", token);
+        model.addAttribute("token", status.token());
         model.addAttribute("monthLabel", selected.format(MONTH_LABEL));
         model.addAttribute("monthParam", selected.toString());
         model.addAttribute("prevMonthParam", selected.minusMonths(1).toString());
         model.addAttribute("nextMonthParam", selected.plusMonths(1).toString());
-        model.addAttribute("currentMonthParam", YearMonth.now().toString());
+        model.addAttribute("currentMonthParam", YearMonth.now(zone).toString());
         model.addAttribute("daysInMonth", selected.lengthOfMonth());
-        model.addAttribute("today", LocalDate.now());
+        model.addAttribute("today", LocalDate.now(zone));
         model.addAttribute("testTypes", BrainTestType.values());
         model.addAttribute("lastSyncInstant", lastSync);
         model.addAttribute("lastSyncLabel", lastSync == null ? null
-                : SYNC_LABEL.format(lastSync.atZone(ZoneId.systemDefault())));
+                : SYNC_LABEL.format(lastSync.atZone(zone)));
         model.addAttribute("lastSeenInstant", lastSeen);
         model.addAttribute("lastSeenLabel", lastSeen == null ? null
-                : SYNC_LABEL.format(lastSeen.atZone(ZoneId.systemDefault())));
-        model.addAttribute("lastSeenPage", lastSeenPage);
-        model.addAttribute("lastSeenDevice", deviceLabel(lastSeenAgent));
+                : SYNC_LABEL.format(lastSeen.atZone(zone)));
+        model.addAttribute("lastSeenPage", status.lastSeenPage());
+        model.addAttribute("lastSeenDevice", deviceLabel(status.lastSeenAgent()));
         return "brain/index";
     }
 
     @PostMapping("/manual")
     public String addManual(@RequestParam(required = false)
                             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
-                            @RequestParam BrainTestType testType,
+                            @RequestParam(required = false) String testType,
                             @RequestParam(required = false) Integer reactionMs,
                             @RequestParam(required = false) Integer processingAvgMs,
                             @RequestParam(required = false) Integer processingAccuracy,
+                            @CookieValue(value = TZ_COOKIE, required = false) String tzCookie,
                             RedirectAttributes ra) {
-        LocalDate resultDate = date != null ? date : LocalDate.now();
+        LocalDate resultDate = date != null ? date : LocalDate.now(parseZone(tzCookie));
         try {
-            brainService.addManual(resultDate, testType, reactionMs, processingAvgMs, processingAccuracy);
+            brainService.addManual(resultDate, parseTestType(testType),
+                    reactionMs, processingAvgMs, processingAccuracy);
             ra.addFlashAttribute("success", "Result saved.");
         } catch (IllegalArgumentException | IllegalStateException e) {
             ra.addFlashAttribute("error", e.getMessage());
@@ -88,7 +95,7 @@ public class BrainController {
         try {
             brainService.delete(id);
             ra.addFlashAttribute("success", "Result deleted.");
-        } catch (NoSuchElementException | SecurityException | IllegalStateException e) {
+        } catch (NoSuchElementException | IllegalStateException e) {
             ra.addFlashAttribute("error", e.getMessage());
         }
         return "redirect:/brain" + (month == null || month.isBlank() ? "" : "?month=" + month);
@@ -140,14 +147,33 @@ public class BrainController {
         return os == null ? browser : browser + " on " + os;
     }
 
-    private static YearMonth parseMonth(String month) {
+    private static YearMonth parseMonth(String month, ZoneId zone) {
         if (month == null || month.isBlank()) {
-            return YearMonth.now();
+            return YearMonth.now(zone);
         }
         try {
             return YearMonth.parse(month);
         } catch (DateTimeParseException e) {
-            return YearMonth.now();
+            return YearMonth.now(zone);
+        }
+    }
+
+    private static ZoneId parseZone(String tz) {
+        if (tz == null || tz.isBlank()) {
+            return ZoneId.of("UTC");
+        }
+        try {
+            return ZoneId.of(tz);
+        } catch (DateTimeException e) {
+            return ZoneId.of("UTC");
+        }
+    }
+
+    private static BrainTestType parseTestType(String value) {
+        try {
+            return value == null ? null : BrainTestType.valueOf(value.trim());
+        } catch (IllegalArgumentException e) {
+            return null; // the service reports "Please choose a test type"
         }
     }
 }

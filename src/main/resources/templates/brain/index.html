@@ -416,6 +416,17 @@
         });
 
         toggleManualFields();
+
+        // Tell the server our timezone (once) so "today" and "this month" match the user's clock.
+        try {
+            var tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+            var current = (document.cookie.match(/(?:^|; )brainTz=([^;]*)/) || [])[1];
+            if (tz && decodeURIComponent(current || '') !== tz) {
+                document.cookie = 'brainTz=' + encodeURIComponent(tz)
+                    + '; path=/; max-age=31536000; SameSite=Lax';
+                if (!current) window.location.reload();
+            }
+        } catch (e) { /* server falls back to UTC */ }
     })();
 
     function toggleToken() {

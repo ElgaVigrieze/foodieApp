@@ -16,5 +16,7 @@ public interface BrainTestResultRepository extends JpaRepository<BrainTestResult
     Optional<BrainTestResult> findTopByOwnerIdAndTestTypeOrderByRecordedAtDesc(
             Long ownerId, BrainTestType testType);
 
+    Optional<BrainTestResult> findByIdAndOwnerId(Long id, Long ownerId);
+
     Optional<BrainTestResult> findByOwnerIdAndClientKey(Long ownerId, String clientKey);
 }
