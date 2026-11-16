@@ -1,5 +1,6 @@
 package com.foodie.controller;
 
+import com.foodie.controller.form.ProductForm;
 import com.foodie.model.db.Product;
 import com.foodie.model.ProductCategory;
 import com.foodie.model.Unit;
@@ -42,7 +43,7 @@ public class ProductController {
     }
 
     @PostMapping("/save")
-    public String save(@Valid @ModelAttribute Product product,
+    public String save(@Valid @ModelAttribute("product") ProductForm form,
                        BindingResult result,
                        Model model,
                        RedirectAttributes redirectAttributes) {
@@ -51,9 +52,26 @@ public class ProductController {
             model.addAttribute("categories", ProductCategory.values());
             return "products/form";
         }
+        // Editing loads the existing product through the service, which verifies household access.
+        Product product = form.id() == null ? new Product() : productService.findById(form.id());
+        apply(form, product);
         productService.save(product);
         redirectAttributes.addFlashAttribute("success", "Product saved successfully!");
         return "redirect:/products";
+    }
+
+    private static void apply(ProductForm form, Product product) {
+        product.setName(form.name());
+        product.setCategory(form.category());
+        product.setUnit(form.unit());
+        product.setPricePerUnit(form.pricePerUnit());
+        product.setCalories(form.calories());
+        product.setProtein(form.protein());
+        product.setCarbs(form.carbs());
+        product.setFat(form.fat());
+        product.setFiber(form.fiber());
+        product.setSugar(form.sugar());
+        product.setBarcode(form.barcode());
     }
 
     @PostMapping("/{id}/delete")

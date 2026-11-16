@@ -28,11 +28,8 @@ public class BudgetService {
      */
     public BudgetReport getWeeklyReport(LocalDate weekStart) {
         LocalDate monday = weekStart.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
-        Long hhId = currentUserService.getCurrentHouseholdId();
-        if (hhId != null) {
-            return mealPlanRepository.findByWeekStartAndHouseholdId(monday, hhId).map(this::buildReport).orElse(BudgetReport.empty(monday));
-        }
-        return mealPlanRepository.findByWeekStart(monday)
+        Long hhId = currentUserService.requireCurrentHousehold().getId();
+        return mealPlanRepository.findByWeekStartAndHouseholdId(monday, hhId)
                 .map(this::buildReport)
                 .orElse(BudgetReport.empty(monday));
     }
@@ -70,7 +67,7 @@ public class BudgetService {
      * Get a list of all weeks that have meal plans with at least one entry.
      */
     public List<LocalDate> getAllWeeks() {
-        return mealPlanRepository.findAll().stream()
+        return getAllPlans().stream()
                 .filter(plan -> !plan.getEntries().isEmpty())
                 .map(MealPlan::getWeekStart)
                 .sorted()
@@ -156,8 +153,6 @@ public class BudgetService {
     }
 
     private List<MealPlan> getAllPlans() {
-        Long hhId = currentUserService.getCurrentHouseholdId();
-        if (hhId != null) return mealPlanRepository.findByHouseholdId(hhId);
-        return mealPlanRepository.findAll();
+        return mealPlanRepository.findByHouseholdId(currentUserService.requireCurrentHousehold().getId());
     }
 }

@@ -1,5 +1,6 @@
 package com.foodie.controller;
 
+import com.foodie.exception.ForbiddenException;
 import com.foodie.service.CurrentUserService;
 import com.foodie.service.DatabaseMonitoringService;
 import lombok.RequiredArgsConstructor;
@@ -28,7 +29,7 @@ public class AdminController {
     /**
      * Get database statistics.
      *
-     * @throws SecurityException if the current user is not an admin
+     * @throws ForbiddenException if the current user is not an admin
      */
     @GetMapping("/stats")
     public Map<String, Object> getStats() {
@@ -39,7 +40,7 @@ public class AdminController {
     /**
      * Get top users by data volume.
      *
-     * @throws SecurityException if the current user is not an admin
+     * @throws ForbiddenException if the current user is not an admin
      */
     @GetMapping("/stats/top-users")
     public Map<String, Object> getTopUsers() {
@@ -49,7 +50,7 @@ public class AdminController {
 
     private void requireAdmin() {
         if (!isAdmin()) {
-            throw new SecurityException("Admin access required");
+            throw new ForbiddenException("Admin access required");
         }
     }
 

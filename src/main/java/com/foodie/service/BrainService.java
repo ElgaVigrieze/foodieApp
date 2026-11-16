@@ -1,5 +1,7 @@
 package com.foodie.service;
 
+import com.foodie.exception.UnauthenticatedException;
+import com.foodie.exception.NotFoundException;
 import com.foodie.controller.dto.BrainMonthSummary;
 import com.foodie.model.BrainTestType;
 import com.foodie.model.db.AppUser;
@@ -46,7 +48,7 @@ public class BrainService {
         appUserRepository.claimBrainToken(user.getId(), newToken(), Instant.now());
         return appUserRepository.findById(user.getId())
                 .map(AppUser::getBrainToken)
-                .orElseThrow(() -> new IllegalStateException("Not authenticated"));
+                .orElseThrow(() -> new UnauthenticatedException("Not authenticated"));
     }
 
     /** Everything the Brain page needs about the recorder, from a single user lookup. */
@@ -106,7 +108,7 @@ public class BrainService {
         AppUser user = requireUser();
         // Scoped to the owner so another user's id looks exactly like a missing one.
         BrainTestResult result = brainTestResultRepository.findByIdAndOwnerId(id, user.getId())
-                .orElseThrow(() -> new NoSuchElementException("Result not found"));
+                .orElseThrow(() -> new NotFoundException("Result not found"));
 
         brainTestResultRepository.delete(result);
     }
@@ -182,7 +184,7 @@ public class BrainService {
     private AppUser requireUser() {
         AppUser user = currentUserService.getCurrentUser();
         if (user == null) {
-            throw new IllegalStateException("Not authenticated");
+            throw new UnauthenticatedException("Not authenticated");
         }
         return user;
     }

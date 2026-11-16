@@ -7,5 +7,5 @@ import java.time.LocalDate;
 import java.util.List;
 
 public interface ShoppingListItemRepository extends JpaRepository<ShoppingListItem, Long> {
-    List<ShoppingListItem> findByWeekStartOrderByProductNameAsc(LocalDate weekStart);
+    List<ShoppingListItem> findByWeekStartAndHouseholdIdOrderByProductNameAsc(LocalDate weekStart, Long householdId);
 }

@@ -1,5 +1,7 @@
 package com.foodie.service;
 
+import com.foodie.exception.ForbiddenException;
+import com.foodie.exception.NotFoundException;
 import com.foodie.model.*;
 import com.foodie.model.db.Meal;
 import com.foodie.model.db.MealIngredient;
@@ -26,11 +28,11 @@ public class MealService {
 
     /**
      * Verifies the current user can access/modify the given meal.
-     * @throws SecurityException if the user doesn't have access
+     * @throws ForbiddenException if the user doesn't have access
      */
     private Meal findByIdAndVerifyAccess(Long id) {
         Meal meal = mealRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Meal not found: " + id));
+                .orElseThrow(() -> NotFoundException.of("Meal", id));
 
         currentUserService.validateUserAccess(meal);
 
@@ -38,28 +40,20 @@ public class MealService {
     }
 
 
+    private Long householdId() {
+        return currentUserService.requireCurrentHousehold().getId();
+    }
+
     public List<Meal> findAll() {
-        Long hhId = currentUserService.getCurrentHouseholdId();
-        if (hhId != null) {
-            return mealRepository.findByHouseholdIdAndArchivedFalseOrderByNameAsc(hhId);
-        }
-        return mealRepository.findByArchivedFalseOrderByNameAsc();
+        return mealRepository.findByHouseholdIdAndArchivedFalseOrderByNameAsc(householdId());
     }
 
     public List<Meal> findArchived() {
-        Long hhId = currentUserService.getCurrentHouseholdId();
-        if (hhId != null) {
-            return mealRepository.findByHouseholdIdAndArchivedTrueOrderByNameAsc(hhId);
-        }
-        return mealRepository.findByArchivedTrueOrderByNameAsc();
+        return mealRepository.findByHouseholdIdAndArchivedTrueOrderByNameAsc(householdId());
     }
 
     public List<Meal> findFavorites() {
-        Long hhId = currentUserService.getCurrentHouseholdId();
-        if (hhId != null) {
-            return mealRepository.findByHouseholdIdAndArchivedFalseAndFavoriteTrueOrderByNameAsc(hhId);
-        }
-        return mealRepository.findByArchivedFalseAndFavoriteTrueOrderByNameAsc();
+        return mealRepository.findByHouseholdIdAndArchivedFalseAndFavoriteTrueOrderByNameAsc(householdId());
     }
 
     public Map<MealCategory, List<Meal>> findAllGroupedByCategory() {
@@ -88,7 +82,7 @@ public class MealService {
                 .recipe(recipe)
                 .recipeUrl(recipeUrl)
                 .owner(currentUserService.getCurrentUser())
-                .household(currentUserService.getCurrentHousehold())
+                .household(currentUserService.requireCurrentHousehold())
                 .build();
 
         mapIngredients(productIds, quantities, meal);
@@ -155,8 +149,9 @@ public class MealService {
             if (productId != null && quantity != null && quantity.compareTo(BigDecimal.ZERO) > 0) {
                 Product product = productsById.get(productId);
                 if (product == null) {
-                    throw new IllegalArgumentException("Product not found: " + productId);
+                    throw NotFoundException.of("Product", productId);
                 }
+                currentUserService.validateUserAccess(product);
                 MealIngredient ingredient = MealIngredient.builder()
                         .product(product)
                         .quantity(quantity)

@@ -1,4 +1,4 @@
-package com.foodie.service;
+package com.foodie.exception;
 
 /** Thrown when a browser recorder presents a token that does not belong to any user. */
 public class InvalidBrainTokenException extends RuntimeException {

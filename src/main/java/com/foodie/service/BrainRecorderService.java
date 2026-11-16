@@ -1,7 +1,9 @@
 package com.foodie.service;
 
+import com.foodie.exception.BadRequestException;
 import com.foodie.controller.dto.BrainIngestRequest;
 import com.foodie.controller.dto.BrainIngestResponse;
+import com.foodie.exception.InvalidBrainTokenException;
 import com.foodie.model.db.AppUser;
 import com.foodie.model.db.BrainTestResult;
 import com.foodie.repository.AppUserRepository;
@@ -53,7 +55,7 @@ public class BrainRecorderService {
         AppUser user = authenticate(token);
 
         if (request == null) {
-            throw new IllegalArgumentException("Missing result body");
+            throw new BadRequestException("Missing result body");
         }
 
         // The recorder retries on flaky connections; a client key keeps that idempotent.

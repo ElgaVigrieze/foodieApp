@@ -1,5 +1,6 @@
 package com.foodie.service;
 
+import com.foodie.exception.BadRequestException;
 import com.foodie.controller.dto.BarcodeLookupResult;
 import com.foodie.controller.dto.NutritionBarcodeResult;
 import com.foodie.model.db.Product;
@@ -32,14 +33,12 @@ public class BarcodeService {
      */
     public BarcodeLookupResult lookup(String barcode) {
         if (barcode == null || barcode.isBlank()) {
-            throw new IllegalArgumentException("No barcode provided");
+            throw new BadRequestException("No barcode provided");
         }
 
-        // 1. Check local products first
-        Long householdId = currentUserService.getCurrentHouseholdId();
-        Optional<Product> localProduct = householdId != null
-                ? productRepository.findByBarcodeAndHouseholdId(barcode, householdId)
-                : productRepository.findByBarcode(barcode);
+        // 1. The household's own products
+        Long householdId = currentUserService.requireCurrentHousehold().getId();
+        Optional<Product> localProduct = productRepository.findFirstByBarcodeAndHouseholdId(barcode, householdId);
 
         if (localProduct.isPresent()) {
             return BarcodeLookupResult.fromLocalProduct(localProduct.get());

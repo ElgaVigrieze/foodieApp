@@ -1,14 +1,13 @@
 package com.foodie.controller;
 
+import com.foodie.controller.dto.VoiceParseRequest;
 import com.foodie.controller.dto.VoiceParseResult;
 import com.foodie.controller.dto.VoiceSubmitRequest;
-import com.foodie.model.MealSlot;
 import com.foodie.service.VoiceLogService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
-import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -20,25 +19,13 @@ public class VoiceLogController {
     private final VoiceLogService voiceLogService;
 
     @PostMapping("/parse")
-    public Map<String, Object> parse(@RequestBody Map<String, String> body) {
-        String text = body.getOrDefault("text", "");
-        VoiceParseResult result = voiceLogService.parse(text);
-        return toResponseMap(result);
+    public Map<String, Object> parse(@Valid @RequestBody VoiceParseRequest request) {
+        return toResponseMap(voiceLogService.parse(request.text()));
     }
 
     @PostMapping("/submit")
-    public Map<String, Object> submit(@RequestBody Map<String, Object> body) {
+    public Map<String, Object> submit(@Valid @RequestBody VoiceSubmitRequest request) {
         // Failures are translated to HTTP errors by ApiExceptionHandler
-        VoiceSubmitRequest request = new VoiceSubmitRequest(
-                (String) body.get("type"),
-                LocalDate.parse((String) body.get("date")),
-                body.get("slot") != null ? MealSlot.valueOf((String) body.get("slot")) : null,
-                body.get("mealId") != null ? Long.valueOf(body.get("mealId").toString()) : null,
-                body.get("servings") != null ? new BigDecimal(body.get("servings").toString()) : null,
-                body.get("productId") != null ? Long.valueOf(body.get("productId").toString()) : null,
-                body.get("quantity") != null ? new BigDecimal(body.get("quantity").toString()) : null
-        );
-
         voiceLogService.submit(request);
         return Map.of("success", true);
     }

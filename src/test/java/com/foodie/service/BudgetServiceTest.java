@@ -98,8 +98,8 @@ class BudgetServiceTest {
                 .entries(List.of(entry))
                 .build();
 
-        when(currentUserService.getCurrentHouseholdId()).thenReturn(null);
-        when(mealPlanRepository.findByWeekStart(any())).thenReturn(Optional.of(plan));
+        when(currentUserService.requireCurrentHousehold()).thenReturn(com.foodie.model.db.Household.builder().id(1L).build());
+        when(mealPlanRepository.findByWeekStartAndHouseholdId(any(), any())).thenReturn(Optional.of(plan));
 
         // When
         BudgetService.BudgetReport report = budgetService.getWeeklyReport(LocalDate.of(2024, 1, 1));
@@ -151,8 +151,8 @@ class BudgetServiceTest {
                 .entries(List.of(entry))
                 .build();
 
-        when(currentUserService.getCurrentHouseholdId()).thenReturn(null);
-        when(mealPlanRepository.findByWeekStart(any())).thenReturn(Optional.of(plan));
+        when(currentUserService.requireCurrentHousehold()).thenReturn(com.foodie.model.db.Household.builder().id(1L).build());
+        when(mealPlanRepository.findByWeekStartAndHouseholdId(any(), any())).thenReturn(Optional.of(plan));
 
         // When
         BudgetService.BudgetReport report = budgetService.getWeeklyReport(LocalDate.of(2024, 1, 1));
@@ -188,8 +188,8 @@ class BudgetServiceTest {
                 .entries(List.of(entry))
                 .build();
 
-        when(currentUserService.getCurrentHouseholdId()).thenReturn(null);
-        when(mealPlanRepository.findByWeekStart(any())).thenReturn(Optional.of(plan));
+        when(currentUserService.requireCurrentHousehold()).thenReturn(com.foodie.model.db.Household.builder().id(1L).build());
+        when(mealPlanRepository.findByWeekStartAndHouseholdId(any(), any())).thenReturn(Optional.of(plan));
 
         // When
         BudgetService.BudgetReport report = budgetService.getWeeklyReport(LocalDate.of(2024, 1, 1));
@@ -230,8 +230,8 @@ class BudgetServiceTest {
                 .entries(List.of(entry1, entry2))
                 .build();
 
-        when(currentUserService.getCurrentHouseholdId()).thenReturn(null);
-        when(mealPlanRepository.findByWeekStart(any())).thenReturn(Optional.of(plan));
+        when(currentUserService.requireCurrentHousehold()).thenReturn(com.foodie.model.db.Household.builder().id(1L).build());
+        when(mealPlanRepository.findByWeekStartAndHouseholdId(any(), any())).thenReturn(Optional.of(plan));
 
         // When
         BudgetService.BudgetReport report = budgetService.getWeeklyReport(LocalDate.of(2024, 1, 1));
@@ -246,8 +246,8 @@ class BudgetServiceTest {
     @Test
     void getWeeklyReport_shouldReturnEmptyReportWhenNoPlanExists() {
         // Given
-        when(currentUserService.getCurrentHouseholdId()).thenReturn(null);
-        when(mealPlanRepository.findByWeekStart(any())).thenReturn(Optional.empty());
+        when(currentUserService.requireCurrentHousehold()).thenReturn(com.foodie.model.db.Household.builder().id(1L).build());
+        when(mealPlanRepository.findByWeekStartAndHouseholdId(any(), any())).thenReturn(Optional.empty());
 
         // When
         BudgetService.BudgetReport report = budgetService.getWeeklyReport(LocalDate.of(2024, 1, 1));
@@ -300,8 +300,8 @@ class BudgetServiceTest {
                 .entries(List.of(entry))
                 .build();
 
-        when(currentUserService.getCurrentHouseholdId()).thenReturn(null);
-        when(mealPlanRepository.findByWeekStart(any())).thenReturn(Optional.of(plan));
+        when(currentUserService.requireCurrentHousehold()).thenReturn(com.foodie.model.db.Household.builder().id(1L).build());
+        when(mealPlanRepository.findByWeekStartAndHouseholdId(any(), any())).thenReturn(Optional.of(plan));
 
         // When
         BudgetService.BudgetReport report = budgetService.getWeeklyReport(LocalDate.of(2024, 1, 1));

@@ -6,6 +6,8 @@ import com.foodie.service.CurrentUserService;
 import com.foodie.service.MealPlanService;
 import com.foodie.service.ProductService;
 import com.foodie.service.ShoppingListService;
+import com.foodie.controller.form.ShoppingListForms;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.stereotype.Controller;
@@ -13,7 +15,6 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
-import java.math.BigDecimal;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.temporal.TemporalAdjusters;
@@ -58,45 +59,40 @@ public class ShoppingListController {
     }
 
     @PostMapping("/update-quantity")
-    public String updateQuantity(@RequestParam Long itemId,
-                                 @RequestParam BigDecimal quantity,
-                                 @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate weekStart,
-                                 RedirectAttributes redirectAttributes) {
-        shoppingListService.updateQuantity(itemId, quantity);
-        return "redirect:/shopping-list?week=" + weekStart;
+    public String updateQuantity(@Valid @ModelAttribute ShoppingListForms.ItemQuantity form) {
+        shoppingListService.updateQuantity(form.itemId(), form.quantity());
+        return backToWeek(form.weekStart());
     }
 
     @PostMapping("/toggle-checked")
-    public String toggleChecked(@RequestParam Long itemId,
-                                @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate weekStart) {
-        shoppingListService.toggleChecked(itemId);
-        return "redirect:/shopping-list?week=" + weekStart;
+    public String toggleChecked(@Valid @ModelAttribute ShoppingListForms.ItemRef form) {
+        shoppingListService.toggleChecked(form.itemId());
+        return backToWeek(form.weekStart());
     }
 
     @PostMapping("/add-item")
-    public String addItem(@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate weekStart,
-                          @RequestParam Long productId,
-                          @RequestParam BigDecimal quantity,
+    public String addItem(@Valid @ModelAttribute ShoppingListForms.AddItem form,
                           RedirectAttributes redirectAttributes) {
-        shoppingListService.addItem(weekStart, productService.findById(productId), quantity);
+        shoppingListService.addItem(form.weekStart(), productService.findById(form.productId()), form.quantity());
         redirectAttributes.addFlashAttribute("success", "Item added!");
-        return "redirect:/shopping-list?week=" + weekStart;
+        return backToWeek(form.weekStart());
     }
 
     @PostMapping("/update-comment")
-    public String updateComment(@RequestParam Long itemId,
-                                @RequestParam(required = false) String comment,
-                                @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate weekStart) {
-        shoppingListService.updateComment(itemId, comment);
-        return "redirect:/shopping-list?week=" + weekStart;
+    public String updateComment(@Valid @ModelAttribute ShoppingListForms.ItemComment form) {
+        shoppingListService.updateComment(form.itemId(), form.comment());
+        return backToWeek(form.weekStart());
     }
 
     @PostMapping("/remove-item")
-    public String removeItem(@RequestParam Long itemId,
-                             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate weekStart,
+    public String removeItem(@Valid @ModelAttribute ShoppingListForms.ItemRef form,
                              RedirectAttributes redirectAttributes) {
-        shoppingListService.removeItem(itemId);
+        shoppingListService.removeItem(form.itemId());
         redirectAttributes.addFlashAttribute("success", "Item removed.");
+        return backToWeek(form.weekStart());
+    }
+
+    private static String backToWeek(LocalDate weekStart) {
         return "redirect:/shopping-list?week=" + weekStart;
     }
 }
