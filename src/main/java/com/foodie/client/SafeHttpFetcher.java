@@ -156,6 +156,8 @@ public class SafeHttpFetcher {
      */
     public String fetchText(String url, Map<String, String> headers) throws IOException {
         validate(url);
+        // SSRF is prevented by validate() plus the ValidatingDnsResolver and redirect checks (see class docs).
+        // codeql[java/ssrf]
         HttpGet request = new HttpGet(url.trim());
         headers.forEach(request::addHeader);
         // executeOpen, not execute(request, handler): the latter drains the whole body after the
