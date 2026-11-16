@@ -21,6 +21,9 @@
         <java.version>25</java.version>
         <mockito.version>5.24.0</mockito.version>
         <byte-buddy.version>1.17.7</byte-buddy.version>
+        <!-- 1.21.4+ speaks Docker API 1.44, required by Docker Engine 29 on GitHub's ubuntu runners
+             (1.21.3, managed by Spring Boot 3.5.6, fails to start containers there). -->
+        <testcontainers.version>1.21.4</testcontainers.version>
     </properties>
 
     <repositories>
