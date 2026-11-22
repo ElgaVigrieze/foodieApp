@@ -14,6 +14,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import com.foodie.support.PostgresTestConfig;
+import com.foodie.util.CalendarUtils;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
@@ -326,6 +327,18 @@ class HouseholdIsolationTest {
         assertThat(mealPlans.findByHouseholdId(bob.getHousehold().getId()).stream()
                 .flatMap(p -> tx.execute(s -> mealPlans.findById(p.getId()).orElseThrow().getEntries()).stream()))
                 .isEmpty();
+    }
+
+    @Test
+    void bobCannotCopyAlicesWeek() throws Exception {
+        LocalDate thisWeek = CalendarUtils.weekStart(LocalDate.now());
+        bobPosts("/meal-plan/copy-week", "sourceWeek", DAY.toString(), "weekStart", thisWeek.toString())
+                .andExpect(status().is3xxRedirection())
+                .andExpect(flash().attribute("error", "Nothing to copy from that week."));
+
+        assertThat(mealPlans.findByHouseholdId(bob.getHousehold().getId())).isEmpty();
+        int entryCount = tx.execute(s -> mealPlans.findById(alicePlan.getId()).orElseThrow().getEntries().size());
+        assertThat(entryCount).isEqualTo(1);
     }
 
     @Test

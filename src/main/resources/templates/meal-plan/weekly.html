@@ -11,6 +11,11 @@
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
 
+    <div th:if="${error}" class="alert alert-danger alert-dismissible fade show" role="alert">
+        <span th:text="${error}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
     <!-- Week Navigation -->
     <div class="d-flex justify-content-between align-items-center mb-3">
         <a th:href="@{/meal-plan(week=${prevWeek})}" class="btn btn-outline-secondary">
@@ -30,6 +35,18 @@
                         th:title="${plan.frozen} ? 'Unfreeze plan (allow deletions)' : 'Freeze plan (prevent deletions)'">
                     <i class="bi" th:classappend="${plan.frozen} ? 'bi-unlock' : 'bi-lock'"></i>
                     <span th:text="${plan.frozen} ? 'Unfreeze Plan' : 'Approve & Freeze'"></span>
+                </button>
+            </form>
+            <!-- Copy from another week -->
+            <form th:if="${!weekStart.isBefore(currentWeekStart)}" th:action="@{/meal-plan/copy-week}" method="post"
+                  class="d-inline-flex align-items-center gap-1 mt-1"
+                  onsubmit="this.querySelector('button[type=submit]').disabled = true;">
+                <input type="hidden" name="weekStart" th:value="${weekStart}">
+                <label class="small text-muted mb-0" for="sourceWeek">Copy from week</label>
+                <input type="date" id="sourceWeek" name="sourceWeek" th:value="${prevWeek}"
+                       class="form-control form-control-sm w-auto" required>
+                <button type="submit" class="btn btn-sm btn-outline-primary">
+                    <i class="bi bi-files"></i> Copy
                 </button>
             </form>
         </div>
