@@ -7,3 +7,6 @@ data/
 *.jar
 *.log
 .env
+/CLAUDE.md
+/.run/Foodie.run.xml
+/run-local.ps1

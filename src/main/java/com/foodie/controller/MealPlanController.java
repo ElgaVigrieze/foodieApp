@@ -83,6 +83,14 @@ public class MealPlanController {
         return backToWeek(form.weekStart());
     }
 
+    @PostMapping("/copy-week")
+    public String copyWeek(@Valid @ModelAttribute MealPlanForms.CopyWeek form,
+                           RedirectAttributes redirectAttributes) {
+        MealPlanService.CopyResult result = mealPlanService.copyWeek(form.sourceWeek(), form.weekStart());
+        redirectAttributes.addFlashAttribute("success", result.message());
+        return backToWeek(form.weekStart());
+    }
+
     @PostMapping("/toggle-freeze")
     public String toggleFreeze(@Valid @ModelAttribute MealPlanForms.PlanRef form,
                                RedirectAttributes redirectAttributes) {

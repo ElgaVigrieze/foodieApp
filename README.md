@@ -28,7 +28,7 @@ A comprehensive meal planning and nutrition tracking application with **AI-power
 - **Food Logging** — Track daily intake by meal slot (breakfast, lunch, dinner, snack)
 - **Meal Planning** — Plan weekly meals with automatic shopping list generation
 - **Shopping Lists** — Auto-generated from meal plans, with manual additions
-- **Household Support** — Multi-user households with shared data and role-based access
+- **Household Support** — Every user belongs to a household with shared data; roles are owner and member
 - **Budget Tracking** — Track food spending alongside nutrition
 - **Fitness Integration** — Log workouts and track training plans
 - **Brain Tracking** — Automatic reaction-time and processing-speed scores with a monthly scoreboard
@@ -43,7 +43,7 @@ A comprehensive meal planning and nutrition tracking application with **AI-power
 ├─────────────────────────────────────────────────────────────────┤
 │                     REST API Controllers                         │
 │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐           │
-│  │ MealAPI  │ │ PhotoLog │ │ VoiceLog │ │ Barcode  │  ...      │
+│  │ Meal     │ │ PhotoLog │ │ VoiceLog │ │ Barcode  │  ...      │
 │  └──────────┘ └──────────┘ └──────────┘ └──────────┘           │
 ├─────────────────────────────────────────────────────────────────┤
 │                       Service Layer                              │
@@ -98,37 +98,45 @@ A comprehensive meal planning and nutrition tracking application with **AI-power
 
 - Java 25+
 - Maven 3.8+
-- PostgreSQL (or use H2 for local dev)
-- Cloudflare account (for AI features)
+- Docker (for a local PostgreSQL), or nothing extra to use the built-in H2 file database
+- Google OAuth2 client (required to log in)
+- Cloudflare account (optional, only for the AI features)
 
 ### Configuration
 
-Create `application-local.yml` or set environment variables:
+Copy `.env.example` to `.env` and fill it in, or set the same names as environment variables.
+With no database variables the app uses a local H2 file in `./data` and Hibernate manages the schema.
 
-```yaml
-# Database
-spring:
-  datasource:
-    url: jdbc:postgresql://localhost:5432/foodie
-    username: your_username
-    password: your_password
+| Variable | Required | Purpose |
+|----------|----------|---------|
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | yes | Google OAuth2 login (the app will not start without them) |
+| `PORT` | no | HTTP port, default `9090` |
+| `DATABASE_URL`, `DATABASE_DRIVER`, `DATABASE_USER`, `DATABASE_PASSWORD`, `JPA_DIALECT` | for PostgreSQL | Database connection (default: H2 file) |
+| `FLYWAY_ENABLED=true`, `DDL_AUTO=validate` | **required with PostgreSQL** | Flyway owns the schema; the app refuses to start on PostgreSQL without them |
+| `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN` | no | Enables photo and recipe AI features |
+| `ADMIN_EMAIL` | no | Admin for usage monitoring |
 
-# OAuth2 (required: the app will not start without these)
-spring:
-  security:
-    oauth2:
-      client:
-        registration:
-          google:
-            client-id: ${GOOGLE_CLIENT_ID}
-            client-secret: ${GOOGLE_CLIENT_SECRET}
+### Run with a local PostgreSQL
 
-# Cloudflare AI (for photo/recipe analysis)
-app:
-  cloudflare:
-    account-id: ${CLOUDFLARE_ACCOUNT_ID}
-    api-token: ${CLOUDFLARE_API_TOKEN}
+```bash
+docker run -d --name foodie-pg \
+  -e POSTGRES_USER=foodie -e POSTGRES_PASSWORD=foodie -e POSTGRES_DB=foodie \
+  -p 127.0.0.1:5433:5432 -v foodie-pg-data:/var/lib/postgresql postgres:18
 ```
+
+Port 5433 avoids a clash with a PostgreSQL already installed on 5432. Put this in `.env`:
+
+```
+DATABASE_URL=jdbc:postgresql://localhost:5433/foodie
+DATABASE_DRIVER=org.postgresql.Driver
+DATABASE_USER=foodie
+DATABASE_PASSWORD=foodie
+JPA_DIALECT=org.hibernate.dialect.PostgreSQLDialect
+FLYWAY_ENABLED=true
+DDL_AUTO=validate
+```
+
+Flyway creates the schema on first start (`src/main/resources/db/migration`). The migrations are PostgreSQL SQL, so on H2 Hibernate creates the schema instead.
 
 ### Run Locally
 
@@ -247,19 +255,20 @@ The system then:
 
 ```
 src/main/java/com/foodie/
-├── config/          # Security, OAuth2 configuration
-├── controller/      # REST endpoints and web controllers
-│   ├── PhotoLogController.java      # AI photo analysis
-│   ├── RecipeImportController.java  # AI recipe extraction
-│   ├── VoiceLogController.java      # Voice input parsing
-│   └── BarcodeController.java       # Barcode scanning
-├── model/           # JPA entities
+├── client/          # External HTTP clients (CloudflareAiClient, OpenFoodFactsClient, SafeHttpFetcher)
+├── config/          # Security, OAuth2, OpenAPI, household interceptor, schema-management guard
+├── controller/      # Web and REST controllers (Meal, Product, FoodLog, MealPlan, ShoppingList,
+│   │                #   Budget, Fitness, Household, Brain, PhotoLog, RecipeImport, VoiceLog, Barcode, ...)
+│   ├── dto/         # Request/response records
+│   └── form/        # Form-binding objects
+├── exception/       # Shared exception types
+├── model/           # Enums and value types
+│   └── db/          # JPA entities
 ├── repository/      # Data access layer
-└── service/         # Business logic
-    ├── PhotoNutritionService.java   # Cloudflare Vision AI
-    ├── RecipeScraperService.java    # AI recipe extraction
-    ├── NutritionLookupService.java  # Open Food Facts API
-    └── RecipeIngredientMatcherService.java  # Fuzzy matching
+├── service/         # Business logic (PhotoNutritionService, RecipeScraperService,
+│                    #   NutritionLookupService, RecipeIngredientMatcherService, VoiceLogService, ...)
+└── util/            # Text matching, calendar and JSON helpers
+src/main/resources/db/migration/   # Flyway migrations (PostgreSQL)
 ```
 
 ---

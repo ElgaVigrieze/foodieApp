@@ -48,6 +48,12 @@ public final class MealPlanForms {
             @NotNull @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate weekStart
     ) {}
 
+    /** Copy a whole week into the viewed week; {@code weekStart} is the target and the redirect target. */
+    public record CopyWeek(
+            @NotNull @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate sourceWeek,
+            @NotNull @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate weekStart
+    ) {}
+
     public record PlanRef(
             @NotNull Long planId,
             @NotNull @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate weekStart

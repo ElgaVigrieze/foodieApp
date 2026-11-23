@@ -1,5 +1,6 @@
 package com.foodie.service;
 
+import com.foodie.exception.BadRequestException;
 import com.foodie.exception.ConflictException;
 import com.foodie.exception.NotFoundException;
 import com.foodie.model.*;
@@ -11,6 +12,7 @@ import com.foodie.model.db.MealPlanEntry;
 import com.foodie.model.db.Product;
 import com.foodie.repository.MealPlanRepository;
 import com.foodie.repository.MealRepository;
+import com.foodie.util.CalendarUtils;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -21,6 +23,7 @@ import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.temporal.TemporalAdjusters;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -49,6 +52,12 @@ public class MealPlanService {
                 ));
     }
 
+    private static void requireNotFrozen(MealPlan plan, String message) {
+        if (plan.isFrozen()) {
+            throw new ConflictException(message);
+        }
+    }
+
     @Transactional
     public void addEntry(LocalDate weekStart, DayOfWeek day, MealSlot slot, Long mealId, Integer servings) {
         MealPlan plan = getOrCreateForWeek(weekStart);
@@ -69,9 +78,7 @@ public class MealPlanService {
     @Transactional
     public void removeEntry(Long planId, Long entryId) {
         MealPlan plan = findPlanByIdWithAccess(planId);
-        if (plan.isFrozen()) {
-            throw new ConflictException("Cannot remove entries from a frozen plan.");
-        }
+        requireNotFrozen(plan, "Cannot remove entries from a frozen plan.");
         plan.getEntries().removeIf(e -> e.getId().equals(entryId));
         mealPlanRepository.save(plan);
     }
@@ -107,6 +114,72 @@ public class MealPlanService {
             plan.addEntry(copy);
         });
         mealPlanRepository.save(plan);
+    }
+
+    public record CopyResult(int copied, int skipped, int archived) {
+        public String message() {
+            StringBuilder sb = new StringBuilder("Copied ").append(copied)
+                    .append(copied == 1 ? " entry" : " entries");
+            List<String> parts = new ArrayList<>();
+            if (skipped > 0) parts.add(skipped + " skipped as duplicates");
+            if (archived > 0) parts.add(archived + (archived == 1 ? " archived meal" : " archived meals") + " not copied");
+            if (!parts.isEmpty()) sb.append(" (").append(String.join(", ", parts)).append(").");
+            return sb.toString();
+        }
+    }
+
+    /**
+     * Copy all entries of the source week into the target week (merge, never replace). Copies start
+     * unprepared. Refusals are checked in the order R2, R3, R4, R5, R6.
+     */
+    @Transactional
+    public CopyResult copyWeek(LocalDate sourceWeek, LocalDate targetWeek) {
+        Household household = currentUserService.requireCurrentHousehold();
+        LocalDate source = CalendarUtils.weekStart(sourceWeek);
+        LocalDate target = CalendarUtils.weekStart(targetWeek);
+        LocalDate current = CalendarUtils.weekStart(LocalDate.now());
+
+        if (source.equals(target)) {
+            throw new BadRequestException("Choose a different week to copy from.");
+        }
+        if (source.isAfter(current)) {
+            throw new BadRequestException("You can only copy from the current week or an earlier week.");
+        }
+        if (target.isBefore(current)) {
+            throw new BadRequestException("You can only copy into the current week or a later week.");
+        }
+
+        List<MealPlanEntry> sourceEntries = mealPlanRepository.findByWeekStartAndHouseholdId(source, household.getId())
+                .map(MealPlan::getEntries)
+                .orElse(List.of());
+        List<MealPlanEntry> active = sourceEntries.stream().filter(e -> !e.getMeal().isArchived()).toList();
+        if (active.isEmpty()) {
+            throw new BadRequestException("Nothing to copy from that week.");
+        }
+
+        // Creates the target only if it has no plan, and a new plan is never frozen, so a plan is
+        // only ever created once R2-R6 have passed (R9).
+        MealPlan targetPlan = getOrCreateForWeek(target);
+        requireNotFrozen(targetPlan, "The target week is frozen. Unfreeze it first.");
+
+        record Key(DayOfWeek day, MealSlot slot, Long mealId) {
+            static Key of(MealPlanEntry e) {
+                return new Key(e.getDayOfWeek(), e.getSlot(), e.getMeal().getId());
+            }
+        }
+        Set<Key> existing = targetPlan.getEntries().stream().map(Key::of).collect(Collectors.toSet());
+        List<MealPlanEntry> toCopy = active.stream().filter(e -> !existing.contains(Key.of(e))).toList();
+
+        for (MealPlanEntry e : toCopy) {
+            targetPlan.addEntry(MealPlanEntry.builder()
+                    .dayOfWeek(e.getDayOfWeek())
+                    .slot(e.getSlot())
+                    .meal(e.getMeal())
+                    .servings(e.getServings() != null ? e.getServings() : 1)
+                    .build());
+        }
+        mealPlanRepository.save(targetPlan);
+        return new CopyResult(toCopy.size(), active.size() - toCopy.size(), sourceEntries.size() - active.size());
     }
 
     @Transactional
